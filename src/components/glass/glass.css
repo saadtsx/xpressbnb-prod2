@@ -1,0 +1,26 @@
+.xpx-glass { position: relative; min-width: 0; color: #18392b; }
+.xpx-glass[data-glass-policy] { background: transparent; border: 0; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.xpx-glass-base { position: absolute; inset: 0; pointer-events: none; border-radius: inherit; background: rgba(249,252,249,.84); border: 1px solid rgba(255,255,255,.72); box-shadow: inset 0 1px 0 #fff, inset 0 -1px 0 #153c2910, 0 8px 26px #16382d14; backdrop-filter: blur(16px) saturate(1.15); -webkit-backdrop-filter: blur(16px) saturate(1.15); }
+.xpx-glass-optics { position: absolute; inset: 0; pointer-events: none; border-radius: inherit; }
+.xpx-glass-content { position: relative; z-index: 1; border-radius: inherit; }
+/* Once the actual library material has mounted, remove the duplicate blur behind it. */
+.xpx-glass[data-glass-policy="full"]:is([data-glass-strategy="blur"],[data-glass-strategy="webgl"],[data-glass-strategy="svg"]) > .xpx-glass-base { background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.xpx-glass[data-glass-policy="solid"] > .xpx-glass-base { background: #fafcf9; backdrop-filter: none; -webkit-backdrop-filter: none; border-color: #becdc3; }
+.xpx-glass-lens .xpx-glass-base { box-shadow: inset 0 1px 0 #ffffffcf, inset 0 -1px 0 #ffffff60, 0 5px 18px #18392b26; }
+.xpx-glass-content :is(button,a):focus-visible { outline: 3px solid #047857; outline-offset: 3px; }
+.xpx-glass-dock { pointer-events: none; padding: 0 max(12px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left)); }
+.xpx-bottom-glass { pointer-events: auto; max-width: 480px; margin-inline: auto; }
+.xpx-bottom-glass .xpx-glass-content { padding: 3px; }
+.xpx-bottom-glass button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.xpx-glass-dock[data-homepage="true"] { padding: 0; }
+.xpx-glass-dock[data-homepage="true"] .xpx-bottom-glass { max-width: none; }
+.xpx-glass-dock[data-homepage="true"] .xpx-glass-content { padding: 3px max(8px,env(safe-area-inset-right)) max(4px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left)); }
+.xpx-glass-dock[data-homepage="true"] .xpx-glass-base { border-inline: 0; border-bottom: 0; }
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .xpx-glass > .xpx-glass-base { background: #fafcf9; backdrop-filter: none; -webkit-backdrop-filter: none; border-color: #617668; }
+  .xpx-glass > .xpx-glass-optics { display: none; }
+}
+@media (forced-colors: active) {
+  .xpx-glass > .xpx-glass-base { background: Canvas; border: 1px solid CanvasText; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .xpx-glass > .xpx-glass-optics { display: none; }
+}

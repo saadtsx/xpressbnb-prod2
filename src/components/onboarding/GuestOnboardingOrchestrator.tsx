@@ -39,11 +39,11 @@ export default function GuestOnboardingOrchestrator({
     });
   }, [dismissWelcome]);
 
-  if (!enabled) {
+  if (!enabled || hidden) {
     return (
       <>
         <CookieConsentBanner />
-        <InstallAppPrompt hidden={hidden} />
+        <InstallAppPrompt hidden />
       </>
     );
   }

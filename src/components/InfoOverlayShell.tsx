@@ -11,7 +11,7 @@ interface InfoOverlayShellProps {
 /** Full-screen About / Blog / legal overlays — matches XpressBnB emerald brand. */
 export default function InfoOverlayShell({ title, subtitle, onClose, children }: InfoOverlayShellProps) {
   return (
-    <div className="fixed inset-0 z-[80] overflow-y-auto bg-slate-950/50 backdrop-blur-sm">
+    <div className="min-h-screen w-full overflow-y-auto bg-slate-950/50 backdrop-blur-sm">
       <div className="min-h-screen flex flex-col">
         <header className="sticky top-0 z-10 border-b border-emerald-900/30 bg-[#032E25] text-white">
           <div className="xpx-container flex items-center justify-between gap-4 py-4 sm:py-5">

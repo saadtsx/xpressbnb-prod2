@@ -26,6 +26,7 @@ import PropertyQuickInfo from '../components/property/PropertyQuickInfo';
 import DeferredMount from '../components/property/DeferredMount';
 import { logSupabaseError, supabase } from '../lib/supabase';
 import { getPublicPropertyById } from '../lib/publicListings';
+import { getPublicPropertyBrand, type PublicPropertyBrand } from '../lib/publicPropertyBrand';
 import { getAmenityIcon, getAmenityCategoryName, listPropertyAmenities } from '../lib/amenities';
 import { listPropertyImages } from '../lib/propertyImages';
 import { generatePropertyStructuredData, generateBreadcrumbStructuredData } from '../lib/seo';
@@ -92,6 +93,7 @@ function SidebarFallback() {
  */
 export default function PropertyPage() {
   const [property, setProperty] = useState<Property | null>(null);
+  const [propertyBrand, setPropertyBrand] = useState<PublicPropertyBrand | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [loadError, setLoadError] = useState(false);
@@ -147,6 +149,19 @@ export default function PropertyPage() {
         : null,
     [totalPrice, bookingNights, numGuests, property],
   );
+
+  useEffect(() => {
+    const id = property?.id;
+    setPropertyBrand(null);
+    if (!id) return;
+    let cancelled = false;
+    void getPublicPropertyBrand(id).then((brand) => {
+      if (!cancelled) setPropertyBrand(brand);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [property?.id]);
 
   useEffect(() => {
     if (!hasValidDates && showBooking) {
@@ -822,6 +837,12 @@ export default function PropertyPage() {
                   </span>
                 </p>
               </div>
+              {propertyBrand && (
+                <p className="mt-1.5 text-sm text-xpx-muted">
+                  Operated by{' '}
+                  <span className="font-semibold text-xpx-text">{propertyBrand.name}</span>
+                </p>
+              )}
               {(subtitle || property.is_verified) && (
                 <div className="mt-2 flex items-center gap-2.5 flex-wrap">
                   {subtitle && (

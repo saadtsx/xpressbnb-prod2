@@ -222,3 +222,12 @@ export async function saveHostBrandPropertyIds(
 
   return { propertyIds: data ?? ids, validation: [], error: null };
 }
+
+/** Association set edits for the Brand management page (server still validates ownership). */
+export function withPropertyLinked(current: readonly string[], propertyId: string): string[] {
+  return uniquePropertyIds([...current, propertyId]);
+}
+
+export function withPropertyUnlinked(current: readonly string[], propertyId: string): string[] {
+  return current.filter((id) => id !== propertyId);
+}

@@ -50,3 +50,21 @@ dist-ssr
 .migration-state/
 .audit/
 .cleanup/
+
+# Scratch/review output — not shipped
+/output
+/tmp-review
+supabase/.temp
+
+# Large design-exploration / internal-doc assets, unreferenced by app code —
+# not part of the shipped product. Add individually if one becomes needed.
+/public/certificates
+/public/images/business-plan
+/public/images/desktop-customer-experience-v1
+/public/images/homepage-discovery-engine
+/public/images/homepage-experiments
+/public/images/homepage-redesign
+/public/images/homepage-stayscape-system
+/public/images/investor-deck
+/public/images/property-page-redesign
+/public/images/xpass

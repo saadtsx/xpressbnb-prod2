@@ -1,65 +1,47 @@
-import { useState, useEffect, useRef, type ReactNode } from 'react';
-import {
-  ShieldCheck,
-  Zap,
-} from 'lucide-react';
-import { XPRESSBNB_LOGO_IMG_CLASS, XPRESSBNB_LOGO_PATH } from '../lib/branding';
-import { logSupabaseError } from '../lib/supabase';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { ArrowRight, Briefcase, Building2, ChevronDown, CloudOff, Home, Map as MapIcon, MapPin, Mountain, Trees } from 'lucide-react';
+import { DPIIT_EMBLEM_PATH, IIT_ROORKEE_EMBLEM_PATH, XPRESSBNB_LOGO_PATH } from '../lib/branding';
 import type { Property } from '../lib/database.types';
-import { normalizeCityBucket } from '../lib/cityBuckets';
+import { HOMEPAGE_CITY_BUCKETS, normalizeCityBucket } from '../lib/cityBuckets';
 import { openHomeOverlay } from '../lib/navigation';
 import { TEAM_EMAIL } from '../lib/team';
 import { ManageCookiesLink } from './CookieConsent';
 import FeaturedStaysCarousel from './FeaturedStaysCarousel';
-import NearbyStaysSection from './nearby/NearbyStaysSection';
+import ListingPropertyCardSkeleton from './listing/ListingPropertyCardSkeleton';
 import { OnboardingListingsEngagement } from './onboarding/OnboardingListingsEngagement';
-import { firstImageUrl } from '../lib/savedListingsStorage';
-import { propertyCardImageSrcSet } from '../lib/propertyImages';
 import { getPublicListings, invalidatePublicListingsCache } from '../lib/publicListings';
 import { warmPublicHostCache } from '../lib/hostPublicCache';
-import { INQUIRY_HOST_TAGLINE } from '../lib/inquiryCopy';
-import HowItWorksWalkthrough from './HowItWorksWalkthrough';
+import { useNearbyLocationOptional } from '../contexts/NearbyLocationContext';
+import XpModeSwitch from './XpModeSwitch';
+import { rankPropertiesForNearby } from '../lib/nearbyRanking';
+import { matchesHomepageCategory, type HomepageCategory } from '../lib/homepageCategories';
 
-const ACCENT = '#059669';
-const ACCENT_LIGHT = '#ecfdf5';
-const BASE = '#FAFAF8';
-const SURFACE = '#FFFFFF';
-const SURFACE_LIGHT = '#F8FAFC';
-const TEXT = '#0F172A';
-const TEXT_MUTED = '#64748B';
-const BORDER = '#E5E7EB';
-const FOOTER_HEADING = '#FFFFFF';
-const FOOTER_BODY = 'rgba(255,255,255,0.6)';
-const FOOTER_LOGO_ACCENT = ACCENT;
-const FOOTER_LINK_HOVER = ACCENT;
-const FOOTER_DIVIDER = 'rgba(255,255,255,0.08)';
-const FOOTER_COPY = 'rgba(255,255,255,0.35)';
+const NearbyMapDiscovery = lazy(() => import('./nearby/NearbyMapDiscovery'));
 
-function pexelsPhotoUrl(photoId: string, width: number) {
-  return `https://images.pexels.com/photos/${photoId}/pexels-photo-${photoId}.jpeg?auto=compress&cs=tinysrgb&w=${width}`;
-}
-
-const CITIES = ['Delhi', 'Gurgaon', 'Noida', 'Greater Noida', 'Ghaziabad', 'Rishikesh', 'Dehradun'];
-
-const CITY_TAGLINES: Record<string, string> = {
-  Delhi: 'Capital stays, direct host pricing.',
-  Gurgaon: 'Corporate hub, premium homes.',
-  Noida: 'Modern stays, transparent pricing.',
-  'Greater Noida': 'Spacious homes, quiet neighborhoods.',
-  Rishikesh: 'Riverside retreats, calm stays.',
-  Ghaziabad: 'Comfortable stays near Delhi NCR.',
-  Dehradun: 'Doon valley homes, hill escapes.',
-};
-
-const CITY_IMAGES: Record<string, string> = {
-  Delhi: pexelsPhotoUrl('789750', 600),
-  Gurgaon: pexelsPhotoUrl('1571460', 600),
-  Noida: pexelsPhotoUrl('1396122', 600),
-  'Greater Noida': pexelsPhotoUrl('1643383', 600),
-  Ghaziabad: pexelsPhotoUrl('2506988', 600),
-  Rishikesh: pexelsPhotoUrl('2161449', 600),
-  Dehradun: pexelsPhotoUrl('167699', 600),
-};
+const DESTINATIONS = [
+  { city: 'Delhi', image: 'delhi', description: 'Coffee dates. Old-city detours.', alt: 'Delhi-inspired heritage courtyard with coffee for two' },
+  { city: 'Gurgaon', image: 'gurgaon', description: 'Log off. Stay a little longer.', alt: 'Gurgaon-inspired sunset balcony with two seats overlooking the city' },
+  { city: 'Noida', image: 'noida', description: 'Slow mornings, close to home.', alt: 'Noida-inspired apartment morning with two coffees and a leafy city view' },
+  { city: 'Rishikesh', image: 'rishikesh', description: 'Two cups. A little more quiet.', alt: 'Rishikesh-inspired riverside morning with chai for two' },
+];
+const STEPS = [
+  { image: 'step-find', title: 'Find your place', text: 'Compare homes, prices and details.' },
+  { image: 'step-details', title: 'Get the details', text: 'Share your dates and what you need.' },
+  { image: 'step-home', title: 'Feel at home', text: 'Connect with the host and plan your stay.' },
+];
+const CATEGORIES = [
+  { id: 'all', label: 'All stays', icon: null },
+  { id: 'apartment', label: 'Apartments', icon: Building2 },
+  { id: 'villa', label: 'Villas', icon: Home },
+  { id: 'cottage', label: 'Cottages', icon: Trees },
+  { id: 'work', label: 'Work-friendly', icon: Briefcase },
+  { id: 'mountain', label: 'Mountain stays', icon: Mountain },
+] as const;
+const FAQS = [
+  { question: 'How does an inquiry work?', answer: 'Choose a stay and send your dates and requirements. Your inquiry is reviewed before it is shared with the host. The host can then contact you directly to discuss availability and the next steps. Sending an inquiry does not confirm a booking.' },
+  { question: 'Does XpressBnB charge guest commission?', answer: 'XpressBnB does not add a guest commission. Prices are listed by hosts. Confirm your dates, the final amount, any additional charges and payment terms with the host before agreeing to a stay.' },
+  { question: 'When is a listing marked verified?', answer: 'A listing with a verified badge has passed our quality review. Other listings are provided directly by hosts. Review the property details and confirm anything important to your trip with the host.' },
+];
 
 export type HomepageBelowFoldProps = {
   onCityClick: (city: string) => void;
@@ -67,592 +49,133 @@ export type HomepageBelowFoldProps = {
   scrollTo: (id: string) => void;
 };
 
-export default function HomepageBelowFold({
-  onCityClick,
-  onNavigate,
-  scrollTo,
-}: HomepageBelowFoldProps) {
+export default function HomepageBelowFold({ onCityClick, onNavigate, scrollTo }: HomepageBelowFoldProps) {
   const [properties, setProperties] = useState<Property[]>([]);
-  const [propertiesByCity, setPropertiesByCity] = useState<Record<string, Property[]>>({});
-  const [loading, setLoading] = useState(true);
-  const [listingsError, setListingsError] = useState<string | null>(null);
-  const loadPropertiesRef = useRef(0);
+  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [attempt, setAttempt] = useState(0);
+  const [filter, setFilter] = useState<string | null>(null);
+  const [category, setCategory] = useState<HomepageCategory>('all');
+  const [mapOpen, setMapOpen] = useState(false);
+  const nearby = useNearbyLocationOptional();
+  const hasLocation = nearby?.permission === 'granted' && Boolean(nearby.coords);
+  const activeFilter = filter ?? (hasLocation ? 'Nearby' : 'All stays');
 
   useEffect(() => {
-    const requestId = ++loadPropertiesRef.current;
-    void loadProperties(requestId);
-    return () => {
-      loadPropertiesRef.current += 1;
-    };
-  }, []);
+    let active = true;
+    setStatus('loading');
+    // A stalled connection should not leave the homepage in an endless skeleton.
+    const timeout = window.setTimeout(() => {
+      if (active) { active = false; setStatus('error'); }
+    }, 12_000);
+    void getPublicListings({ forceRefresh: attempt > 0 }).then(result => {
+      if (!active) return;
+      window.clearTimeout(timeout);
+      if (result.status === 'error') { setStatus('error'); return; }
+      setProperties(result.listings);
+      warmPublicHostCache(result.listings.map(property => property.host_id));
+      setStatus('ready');
+    }).catch(() => {
+      if (active) { window.clearTimeout(timeout); setStatus('error'); }
+    });
+    return () => { active = false; window.clearTimeout(timeout); };
+  }, [attempt]);
 
-  const loadProperties = async (requestId: number, forceRefresh = false) => {
-    setLoading(true);
-    setListingsError(null);
-    try {
-      const result = await getPublicListings({ forceRefresh });
-      if (requestId !== loadPropertiesRef.current) return;
-      if (result.status === 'error') {
-        setProperties([]);
-        setPropertiesByCity({});
-        setListingsError("We couldn't load stays right now. Please try again.");
-        return;
-      }
-      const data = result.listings;
-      setProperties(data);
-      warmPublicHostCache(data.map((listing) => listing.host_id));
-      const grouped: Record<string, Property[]> = {};
-      CITIES.forEach((c) => {
-        grouped[c] = data.filter((p) => normalizeCityBucket(p.city) === c);
-      });
-      setPropertiesByCity(grouped);
-    } catch (err) {
-      if (requestId !== loadPropertiesRef.current) return;
-      logSupabaseError('Error loading properties', err);
-      setProperties([]);
-      setPropertiesByCity({});
-      setListingsError("We couldn't load stays right now. Please try again.");
-    } finally {
-      if (requestId === loadPropertiesRef.current) setLoading(false);
-    }
-  };
+  const rankedNearby = useMemo(() => {
+    if (!nearby?.coords) return [];
+    const { lat, lng } = nearby.coords;
+    const inCity = nearby.cityBucket ? rankPropertiesForNearby(lat, lng, properties, { limit: 12, maxKm: 60, cityBucket: nearby.cityBucket }) : [];
+    return inCity.length ? inCity : rankPropertiesForNearby(lat, lng, properties, { limit: 8, maxKm: 120 });
+  }, [properties, nearby?.coords, nearby?.cityBucket]);
+  const filtered = useMemo(() => {
+    const destinations = activeFilter === 'Nearby' ? rankedNearby : activeFilter === 'All stays' ? properties : properties.filter(property => normalizeCityBucket(property.city) === activeFilter);
+    return destinations.filter(property => matchesHomepageCategory(property, category));
+  }, [activeFilter, properties, rankedNearby, category]);
+  const distanceByPropertyId = useMemo(() => {
+    const distances: Record<string, number> = {};
+    if (activeFilter === 'Nearby') for (const property of rankedNearby) distances[property.id] = property.distanceKm;
+    return distances;
+  }, [activeFilter, rankedNearby]);
+  const waiting = status === 'loading';
 
-  const featuredProperties = properties.slice(0, 8);
+  useEffect(() => {
+    if (!nearby?.shouldScrollToNearby || nearby.isLoading) return;
+    setFilter('Nearby');
+    nearby.clearScrollToNearby();
+    document.getElementById('nearby')?.scrollIntoView({
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start',
+    });
+  }, [nearby]);
 
-  return (
-    <>
-      {/* ──── Nearby Stays (location-powered) ──── */}
-      <NearbyStaysSection onNavigate={onNavigate} fallbackTrending={featuredProperties} />
-
-      {/* ──── Featured Stays ──── */}
-      <OnboardingListingsEngagement id="listings" className="scroll-mt-28 xpx-section" style={{ background: BASE }}>
-        <div className="xpx-container">
-          <SectionHeader
-            label="HANDPICKED FOR YOU"
-            title="Featured Stays"
-            subtitle="Handpicked stays from our host community"
-            action={
-              <button
-                onClick={() => onCityClick('Delhi')}
-                className="flex items-center gap-1 text-sm font-semibold transition-colors text-[#059669] hover:text-[#047857]"
-              >
-                View all stays
-                <span aria-hidden>&rarr;</span>
-              </button>
-            }
-          />
-
-          {loading ? (
-            <FeaturedSkeleton />
-          ) : listingsError ? (
-            <div className="py-16 text-center text-sm px-4" style={{ color: TEXT_MUTED }}>
-              <p className="font-semibold text-xpx-text mb-1">We couldn&apos;t load stays right now</p>
-              <p>{listingsError}</p>
-              <button
-                type="button"
-                onClick={() => {
-                  invalidatePublicListingsCache();
-                  void loadProperties(loadPropertiesRef.current, true);
-                }}
-                className="mt-4 inline-flex items-center justify-center px-4 py-2 rounded-xl text-sm font-semibold text-white"
-                style={{ background: ACCENT }}
-              >
-                Try again
-              </button>
+  const retry = () => { invalidatePublicListingsCache(); setAttempt(value => value + 1); };
+  return <>
+    <OnboardingListingsEngagement id="listings" className="hp-section hp-listings">
+      <div className="xpx-container">
+        <div className="hp-section-heading">
+          <div><h2>Find your kind of stay.</h2><p>Explore stays across Delhi NCR and nearby escapes.</p></div>
+          <button className="hp-text-link" onClick={() => activeFilter !== 'All stays' && activeFilter !== 'Nearby' ? onCityClick(activeFilter) : onNavigate('/explore')}>View all stays <ArrowRight size={16} /></button>
+        </div>
+        <div className="hp-category-filters" role="group" aria-label="Filter stays by style">
+          {CATEGORIES.map(item => <button key={item.id} aria-pressed={category === item.id} onClick={() => setCategory(item.id)}>{item.icon && <item.icon size={22} strokeWidth={1.6} aria-hidden />}{item.label}</button>)}
+        </div>
+        <details className="hp-destination-filter"><summary><MapPin size={14} aria-hidden />{activeFilter === 'All stays' ? 'All destinations' : activeFilter === 'Nearby' ? 'Near you' : activeFilter}<ChevronDown size={14} aria-hidden /></summary><div className="hp-city-filters" role="group" aria-label="Filter stays by destination">
+          {(hasLocation ? ['Nearby', 'All stays', ...HOMEPAGE_CITY_BUCKETS] : ['All stays', ...HOMEPAGE_CITY_BUCKETS]).map(city => <button key={city} aria-pressed={activeFilter === city} onClick={() => setFilter(city)}>{city === 'Nearby' && <MapPin size={14} />}{city === 'Nearby' ? 'Near you' : city === 'All stays' ? 'All destinations' : city}</button>)}
+        </div></details>
+        <div id="nearby" className="hp-inventory" aria-busy={waiting}>
+          {waiting ? <><p className="sr-only" role="status">Loading stays</p><div className="hp-loading-grid">{[0, 1, 2, 3].map(index => <ListingPropertyCardSkeleton key={index} />)}</div></>
+          : status === 'error' ? <div className="hp-empty" role="status">
+              <span className="hp-depth-icon hp-depth-icon-muted"><CloudOff size={26} /></span>
+              <div><h3>Stays are taking a moment to load</h3><p>Please try again shortly. You can still explore destinations below.</p></div>
+              <button className="hp-button hp-button-primary" onClick={retry}>Try again <ArrowRight size={16} /></button>
             </div>
-          ) : featuredProperties.length === 0 ? (
-            <div className="py-16 text-center px-4">
-              <p className="text-[17px] font-bold text-xpx-text mb-2">No stays listed yet</p>
-              <p className="text-sm text-xpx-muted mb-5 max-w-sm mx-auto leading-relaxed">
-                We&apos;re growing fast across Delhi NCR. Explore another city while we add more
-                homes here.
-              </p>
-              <button
-                type="button"
-                onClick={() => onCityClick('Delhi')}
-                className="inline-flex items-center justify-center px-5 py-2.5 rounded-full text-[13px] font-semibold text-white"
-                style={{ background: ACCENT }}
-              >
-                Explore Delhi →
-              </button>
-            </div>
-          ) : (
-            <FeaturedStaysCarousel properties={featuredProperties} />
-          )}
+          : filtered.length ? <><span className="sr-only" role="status">{filtered.length} stays {activeFilter === 'All stays' ? 'across all destinations' : `in ${activeFilter}`}</span><FeaturedStaysCarousel key={`${activeFilter}-${category}`} presentation="homepage" properties={filtered.slice(0, 8)} distanceByPropertyId={distanceByPropertyId} />{activeFilter === 'Nearby' && <button className="hp-text-link" onClick={() => setMapOpen(true)}><MapIcon size={16} /> Explore nearby stays on a map</button>}</>
+          : category !== 'all' ? <div className="hp-empty" role="status"><span className="hp-depth-icon hp-depth-icon-muted"><Home size={26} /></span><div><h3>No matching stays just yet</h3><p>Try another style or see all stays in this destination.</p></div><button className="hp-button hp-button-outline" onClick={() => setCategory('all')}>See all styles <ArrowRight size={16} /></button></div>
+          : <div className="hp-empty" role="status"><span className="hp-depth-icon hp-depth-icon-muted"><Home size={26} /></span><div><h3>{activeFilter === 'All stays' ? 'New stays are on their way' : `No stays to show ${activeFilter === 'Nearby' ? 'near you' : `in ${activeFilter}`} yet`}</h3><p>Explore another destination while hosts add more homes.</p></div><button className="hp-button hp-button-outline" onClick={() => activeFilter === 'All stays' ? scrollTo('destinations') : setFilter('All stays')}>{activeFilter === 'All stays' ? 'Explore destinations' : 'See all destinations'} <ArrowRight size={16} /></button></div>}
         </div>
-      </OnboardingListingsEngagement>
-
-      {/* ──── Top Cities ──── */}
-      <section className="xpx-section" style={{ background: SURFACE_LIGHT }}>
-        <div className="xpx-container">
-          <SectionHeader
-            label="EXPLORE"
-            title="Top Destinations"
-            subtitle="Direct host listings across India’s best cities"
-          />
-
-          <div className="hidden md:grid md:grid-cols-12 md:grid-rows-[minmax(240px,1fr)_minmax(210px,0.9fr)] md:gap-4 lg:gap-5">
-            <button
-              type="button"
-              onClick={() => onCityClick('Delhi')}
-              className="group relative md:col-span-5 md:row-span-2 overflow-hidden cursor-pointer transition-all duration-300 md:hover:-translate-y-1"
-              style={{ boxShadow: '0 8px 22px rgba(15,23,42,0.08)', borderRadius: 20 }}
-            >
-              <TopDestinationCardInner city="Delhi" propertiesByCity={propertiesByCity} listingsLoading={loading} variant="hero" />
-            </button>
-            <button
-              type="button"
-              onClick={() => onCityClick('Gurgaon')}
-              className="group relative md:col-span-7 overflow-hidden cursor-pointer transition-all duration-300 md:hover:-translate-y-1"
-              style={{ boxShadow: '0 8px 20px rgba(15,23,42,0.08)', borderRadius: 20 }}
-            >
-              <TopDestinationCardInner city="Gurgaon" propertiesByCity={propertiesByCity} listingsLoading={loading} variant="wide" />
-            </button>
-            <div className="md:col-span-7 grid grid-cols-3 gap-4 lg:gap-5">
-              {(['Noida', 'Greater Noida', 'Rishikesh'] as const).map((city) => (
-                <button
-                  key={city}
-                  type="button"
-                  onClick={() => onCityClick(city)}
-                  className="group relative min-h-[210px] overflow-hidden cursor-pointer transition-all duration-300 md:hover:-translate-y-1"
-                  style={{ boxShadow: '0 8px 18px rgba(15,23,42,0.08)', borderRadius: 20 }}
-                >
-                  <TopDestinationCardInner city={city} propertiesByCity={propertiesByCity} listingsLoading={loading} />
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid md:hidden grid-cols-2 gap-4">
-            {CITIES.map((city) => (
-              <button
-                key={city}
-                type="button"
-                onClick={() => onCityClick(city)}
-                className="group relative min-h-[170px] overflow-hidden cursor-pointer transition-all duration-300 active:scale-[0.99]"
-                style={{ boxShadow: '0 8px 18px rgba(15,23,42,0.08)', borderRadius: 20 }}
-              >
-                <TopDestinationCardInner city={city} propertiesByCity={propertiesByCity} listingsLoading={loading} />
-              </button>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ──── Trust message ──── */}
-      <section className="xpx-section" style={{ background: BASE }}>
-        <div className="xpx-container">
-          <div className="text-center max-w-2xl mx-auto">
-            <p className="text-2xl md:text-3xl font-extrabold tracking-tight" style={{ color: TEXT }}>
-              Direct stays. Real hosts. Zero commission.
-            </p>
-            <p className="mt-3 text-sm md:text-base leading-relaxed" style={{ color: TEXT_MUTED }}>
-              Inquire when you are ready — transparent host pricing, no invented review scores.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* ──── Host CTA ──── */}
-      <section id="host" className="relative xpx-section" style={{ background: BASE }}>
-        <div className="xpx-container">
-          <div
-            className="relative overflow-hidden rounded-[24px] px-5 py-8 sm:px-7 md:px-10 md:py-11 lg:px-12 lg:py-12"
-            style={{
-              background:
-                'radial-gradient(74% 84% at 100% 0%, rgba(52,211,153,0.28) 0%, rgba(16,185,129,0) 62%), radial-gradient(70% 82% at 8% 100%, rgba(16,185,129,0.16) 0%, rgba(16,185,129,0) 66%), linear-gradient(136deg, #064e3b 0%, #047857 46%, #059669 100%)',
-              boxShadow: '0 14px 36px rgba(6, 78, 59, 0.25)',
-            }}
-          >
-            <div className="absolute -top-16 -right-10 h-56 w-56 rounded-full bg-emerald-200/10 blur-3xl" aria-hidden />
-            <div className="absolute -bottom-16 left-[24%] h-48 w-48 rounded-full bg-emerald-300/10 blur-3xl" aria-hidden />
-
-            <div className="relative z-[1] grid grid-cols-1 lg:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)] gap-8 lg:gap-8 items-center">
-              <div className="max-w-xl">
-                <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.22em]" style={{ color: 'rgba(236,253,245,0.86)' }}>
-                  Host with xpressbnb
-                </p>
-                <h2 className="mt-3 text-[30px] sm:text-[36px] md:text-[44px] font-extrabold tracking-[-0.02em] leading-[1.05] text-white max-w-[14ch]">
-                  Turn your empty space into income
-                </h2>
-                <p className="mt-4 max-w-[48ch] text-sm sm:text-[15px] md:text-base leading-relaxed" style={{ color: 'rgba(236,253,245,0.78)' }}>
-                  {INQUIRY_HOST_TAGLINE} List in minutes, zero platform fees on guest bookings.
-                </p>
-
-                <div className="mt-6 flex flex-col sm:flex-row gap-2.5 sm:gap-3">
-                  <button
-                    type="button"
-                    onClick={() => onNavigate('/auth/login')}
-                    className="inline-flex min-h-[48px] w-full sm:w-auto items-center justify-center rounded-full px-5 sm:px-5.5 py-2.5 text-sm font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
-                    style={{
-                      background: '#ffffff',
-                      color: '#065f46',
-                      boxShadow: '0 8px 18px rgba(6, 78, 59, 0.22)',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#ecfdf5';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = '#ffffff';
-                    }}
-                  >
-                    Start hosting
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => scrollTo('how-it-works')}
-                    className="inline-flex min-h-[48px] w-full sm:w-auto items-center justify-center rounded-full px-5 sm:px-5.5 py-2.5 text-sm font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
-                    style={{
-                      background: 'rgba(255,255,255,0.06)',
-                      border: '1px solid rgba(236,253,245,0.45)',
-                      color: '#ffffff',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
-                    }}
-                  >
-                    How it works
-                  </button>
-                </div>
-              </div>
-
-              <div className="relative w-full max-w-[470px] lg:ml-auto pt-2 sm:pt-0">
-                <div
-                  className="relative overflow-hidden rounded-[20px] border"
-                  style={{
-                    borderColor: 'rgba(236,253,245,0.36)',
-                    boxShadow: '0 12px 28px rgba(6, 78, 59, 0.24)',
-                  }}
-                >
-                  <img
-                    src={pexelsPhotoUrl('6585618', 960)}
-                    srcSet={`${pexelsPhotoUrl('6585618', 480)} 480w, ${pexelsPhotoUrl('6585618', 960)} 960w`}
-                    sizes="(max-width: 639px) 100vw, 470px"
-                    alt="Modern premium room for hosting"
-                    className="h-[248px] w-full object-cover sm:h-[278px] md:h-[304px]"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                  <div
-                    className="absolute inset-0"
-                    style={{
-                      background: 'linear-gradient(180deg, rgba(2,6,23,0.06) 0%, rgba(2,6,23,0.55) 100%)',
-                    }}
-                  />
-                  <div className="absolute left-3.5 right-3.5 bottom-3.5 rounded-[14px] border px-3.5 py-2.5 backdrop-blur-sm" style={{ borderColor: 'rgba(236,253,245,0.26)', background: 'rgba(6,78,59,0.5)' }}>
-                    <p className="text-xs uppercase tracking-[0.18em] font-semibold" style={{ color: 'rgba(167,243,208,0.88)' }}>
-                      Why hosts list here
-                    </p>
-                    <p className="mt-1 text-[13px] font-semibold text-white">Direct inquiries, zero commission on guest bookings</p>
-                  </div>
-                </div>
-
-                <div
-                  className="absolute -left-5 bottom-4 hidden sm:block w-[250px] rounded-[18px] border p-3.5 sm:w-[270px] sm:p-4"
-                  style={{
-                    borderColor: 'rgba(209,250,229,0.44)',
-                    background: 'rgba(255,255,255,0.96)',
-                    boxShadow: '0 10px 24px rgba(6, 78, 59, 0.18)',
-                  }}
-                >
-                  {[
-                    { icon: '%', label: 'Guest commission', value: '0%' },
-                    { icon: '→', label: 'Inquiry flow', value: 'Direct' },
-                    { icon: '✓', label: 'Listing control', value: 'Yours' },
-                  ].map((item) => (
-                    <div
-                      key={item.label}
-                      className="flex items-center gap-2.5 py-2.5"
-                      style={{
-                        borderBottom: item.label === 'Listing control' ? 'none' : '1px solid rgba(16,185,129,0.14)',
-                      }}
-                    >
-                      <span
-                        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[13px] font-bold"
-                        style={{ background: '#ecfdf5', color: '#047857' }}
-                      >
-                        {item.icon}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="text-[11px] uppercase tracking-[0.12em] font-semibold" style={{ color: '#6b7280' }}>
-                          {item.label}
-                        </p>
-                        <p className="mt-0.5 text-[16px] font-extrabold leading-none" style={{ color: '#065f46' }}>
-                          {item.value}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ──── How it works + honest trust ──── */}
-      <section id="why" className="scroll-mt-28 xpx-section relative z-[1]" style={{ background: SURFACE_LIGHT }}>
-        <div className="xpx-container space-y-10 md:space-y-12">
-          <SectionHeader
-            label="HOW IT WORKS"
-            title="Three calm steps to your stay"
-            subtitle="Browse first. Inquire when you're ready. Hear directly from the host."
-          />
-          <HowItWorksWalkthrough id="how-it-works" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            {(
-              [
-                {
-                  icon: ShieldCheck,
-                  title: 'Verified when marked',
-                  desc: 'Listings with a verified badge have passed our quality review. Others are direct host listings with transparent pricing.',
-                },
-                {
-                  icon: Zap,
-                  title: 'Zero guest commission',
-                  desc: 'You pay the host directly. We do not add platform fees on top of the listed price.',
-                },
-              ] as const
-            ).map((card) => {
-              const chip = { bg: ACCENT_LIGHT, fg: ACCENT };
-              return (
-                <div
-                  key={card.title}
-                  className="h-full rounded-[20px] p-6 flex flex-col"
-                  style={{
-                    background: SURFACE,
-                    border: `1px solid ${BORDER}`,
-                  }}
-                >
-                  <div
-                    className="w-12 h-12 rounded-[14px] flex items-center justify-center"
-                    style={{ background: chip.bg }}
-                  >
-                    <card.icon className="w-5 h-5" style={{ color: chip.fg }} strokeWidth={2} />
-                  </div>
-                  <h3 className="mt-5 font-bold text-lg" style={{ color: TEXT }}>{card.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed" style={{ color: TEXT_MUTED }}>{card.desc}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* ──── Footer ──── */}
-      <footer
-        style={{
-          background: '#032E25',
-          borderTop: `1px solid ${FOOTER_DIVIDER}`,
-        }}
-      >
-        <div className="xpx-container pt-14 md:pt-16 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] md:pb-9">
-          <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.3fr)_repeat(3,minmax(0,1fr))] gap-10 md:gap-10 mb-10 md:mb-11">
-            <div>
-              <div className="flex items-center gap-2.5 text-lg leading-none min-h-[40px]">
-                <img
-                  src={XPRESSBNB_LOGO_PATH}
-                  alt=""
-                  className={`${XPRESSBNB_LOGO_IMG_CLASS} h-9 w-9 object-contain shrink-0`}
-                  width={38}
-                  height={38}
-                  decoding="async"
-                />
-                <span className="font-extrabold tracking-tight" style={{ color: FOOTER_HEADING }}>
-                  Xpress<span style={{ color: FOOTER_LOGO_ACCENT }}>BnB</span>
-                </span>
-              </div>
-              <p className="mt-5 text-sm leading-relaxed max-w-sm" style={{ color: FOOTER_BODY }}>
-                Direct stays across Delhi NCR. Host-listed pricing, zero guest commission.
-              </p>
-              <p className="mt-4 text-sm" style={{ color: FOOTER_BODY }}>
-                <a
-                  href={`mailto:${TEAM_EMAIL}`}
-                  className="font-semibold underline underline-offset-2 hover:opacity-90"
-                  style={{ color: FOOTER_LINK_HOVER }}
-                >
-                  Questions? Email us
-                </a>
-              </p>
-            </div>
-            <FooterCol
-              title="Explore"
-              items={CITIES.map((c) => ({ label: c, onClick: () => onCityClick(c) }))}
-            />
-            <FooterCol
-              title="Company"
-              items={[
-                { label: 'How it works', onClick: () => scrollTo('how-it-works') },
-                { label: 'Become a Host', onClick: () => onNavigate('/auth/login') },
-                { label: 'Help', onClick: () => { window.location.href = `mailto:${TEAM_EMAIL}`; } },
-              ]}
-            />
-            <FooterCol
-              title="Legal"
-              items={[
-                { label: 'Privacy', onClick: () => openHomeOverlay('privacy') },
-                { label: 'Terms', onClick: () => openHomeOverlay('terms') },
-                { label: 'Contact', onClick: () => { window.location.href = `mailto:${TEAM_EMAIL}`; } },
-              ]}
-            />
-          </div>
-          <div
-            className="pt-7 md:pt-8 flex flex-col md:flex-row items-center justify-between gap-3"
-            style={{ borderTop: `1px solid ${FOOTER_DIVIDER}` }}
-          >
-            <p className="text-xs" style={{ color: FOOTER_COPY }}>
-              &copy; 2025 XpressBnB. All rights reserved.
-              {' · '}
-              <ManageCookiesLink
-                className="hover:underline transition-colors"
-                style={{ color: FOOTER_BODY }}
-              />
-            </p>
-            <p className="text-xs font-semibold" style={{ color: FOOTER_BODY }}>
-              India&rsquo;s Smarter Stay ♡
-            </p>
-          </div>
-        </div>
-      </footer>
-    </>
-  );
-}
-
-function SectionHeader({
-  label,
-  title,
-  subtitle,
-  action,
-}: {
-  label: string;
-  title: string;
-  subtitle: string;
-  action?: ReactNode;
-}) {
-  return (
-    <div className="xpx-section-head flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 sm:gap-6">
-      <div className="min-w-0">
-        <span className="text-[11px] font-bold tracking-[0.2em]" style={{ color: ACCENT }}>
-          {label}
-        </span>
-        <h2 className="mt-2.5 text-[26px] sm:text-[28px] md:text-3xl font-extrabold tracking-tight leading-[1.12]" style={{ color: TEXT }}>
-          {title}
-        </h2>
-        <p className="text-sm md:text-[15px] mt-1.5" style={{ color: TEXT_MUTED }}>{subtitle}</p>
       </div>
-      {action}
-    </div>
-  );
-}
+    </OnboardingListingsEngagement>
 
-function FeaturedSkeleton() {
-  return (
-    <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5 overflow-hidden">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <div
-          key={i}
-          className="xpx-property-card shrink-0 w-[85vw] min-w-[85vw] max-w-[85vw] md:w-auto md:min-w-0 md:max-w-[380px] overflow-hidden"
-        >
-          <div className="xpx-property-card-media animate-pulse" style={{ background: SURFACE_LIGHT }} />
-          <div className="xpx-property-card-skeleton-body">
-            <div className="h-4 w-3/4 rounded animate-pulse" style={{ background: SURFACE_LIGHT }} />
-            <div className="h-3 w-1/2 rounded animate-pulse" style={{ background: SURFACE_LIGHT }} />
-            <div className="h-10 w-full rounded-xl animate-pulse" style={{ background: SURFACE_LIGHT }} />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
+    <section id="how-it-works" className="hp-section hp-process-section" aria-labelledby="process-title">
+      <div className="xpx-container"><div className="hp-process" id="why">
+        <div className="hp-process-intro"><h2 id="process-title">A good stay in three simple steps.</h2><p>From browsing to check-in, it’s designed to be effortless.</p></div>
+        <ol className="hp-steps">{STEPS.map((step, index) => <li key={step.title}>
+          <img className="hp-step-art" src={`/images/homepage/warm/${step.image}-160.webp`} srcSet={`/images/homepage/warm/${step.image}-160.webp 160w, /images/homepage/warm/${step.image}-320.webp 320w`} sizes="(min-width: 1200px) 112px, 96px" width="160" height="160" alt="" loading="lazy" decoding="async" />
+          <div><span className="hp-step-number">0{index + 1}</span><h3>{step.title}</h3><p>{step.text}</p></div>
+        </li>)}</ol>
+      </div></div>
+    </section>
 
-function TopDestinationCardInner({
-  city,
-  propertiesByCity,
-  listingsLoading = false,
-  variant = 'small',
-}: {
-  city: string;
-  propertiesByCity: Record<string, Property[]>;
-  listingsLoading?: boolean;
-  variant?: 'hero' | 'wide' | 'small';
-}) {
-  const cover =
-    firstImageUrl(propertiesByCity[city]?.[0]?.images ?? null) || CITY_IMAGES[city];
-  const citySize = variant === 'hero' ? 30 : variant === 'wide' ? 24 : 19;
-  const cardHeight = variant === 'hero' ? 'min-h-[470px]' : variant === 'wide' ? 'min-h-[240px]' : 'h-full';
-  const coverSizes =
-    variant === 'hero'
-      ? '(max-width: 767px) 50vw, 44vw'
-      : variant === 'wide'
-        ? '(max-width: 767px) 50vw, 58vw'
-        : '(max-width: 767px) 50vw, 20vw';
-  return (
-    <div className={`relative w-full h-full ${cardHeight}`}>
-      <img
-        src={cover}
-        srcSet={propertyCardImageSrcSet(cover)}
-        sizes={coverSizes}
-        alt={city}
-        className="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-[1.06] transition-transform duration-700"
-        loading="lazy"
-        decoding="async"
-      />
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: 'linear-gradient(180deg, rgba(2,6,23,0) 42%, rgba(2,6,23,0.32) 68%, rgba(2,6,23,0.82) 100%)',
-        }}
-      />
-      <div className="absolute bottom-5 left-5 right-5 text-left">
-        <div
-          className="text-white font-extrabold leading-tight"
-          style={{ fontSize: citySize, textShadow: '0 3px 12px rgba(2,6,23,0.38)' }}
-        >
-          {city}
-        </div>
-        {listingsLoading ? (
-          <p className="text-sm font-medium mt-1" style={{ color: 'rgba(248,250,252,0.88)' }}>
-            Loading stays…
-          </p>
-        ) : (
-          <p className="text-xs font-medium text-white/75 italic tracking-wide mt-1">
-            {CITY_TAGLINES[city] || city}
-          </p>
-        )}
+    <section id="destinations" className="hp-section hp-destinations" aria-labelledby="destinations-title">
+      <div className="xpx-container">
+        <div className="hp-section-heading"><div><h2 id="destinations-title">Where would you like to go?</h2><p>A city break or a change of pace.</p></div><button className="hp-text-link" onClick={() => onNavigate('/explore')}>All destinations <ArrowRight size={16} /></button></div>
+        <div className="hp-destination-grid">{DESTINATIONS.map(destination => <button className="hp-destination" key={destination.city} onClick={() => onCityClick(destination.city)}>
+          <div className="hp-destination-image"><img src={`/images/homepage/city-moods/${destination.image}-480.webp`} srcSet={`/images/homepage/city-moods/${destination.image}-480.webp 480w, /images/homepage/city-moods/${destination.image}-960.webp 960w`} sizes="(max-width: 767px) calc((100vw - 46px) / 2), (max-width: 1280px) calc((100vw - 108px) / 4), 293px" alt={destination.alt} loading="lazy" decoding="async" width="960" height="640" /><span><ArrowRight size={18} /></span></div>
+          <h3>{destination.city}</h3><p>{destination.description}</p>
+        </button>)}</div>
       </div>
-    </div>
-  );
-}
+    </section>
 
-function FooterCol({
-  title,
-  items,
-}: {
-  title: string;
-  items: { label: string; onClick: () => void }[];
-}) {
-  return (
-    <div>
-      <h4 className="font-bold text-sm mb-5 tracking-wide" style={{ color: FOOTER_HEADING }}>{title}</h4>
-      <ul className="space-y-3">
-        {items.map((item) => (
-          <li key={item.label}>
-            <button
-              type="button"
-              onClick={item.onClick}
-              className="text-sm transition-colors hover:underline"
-              style={{ color: FOOTER_BODY }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = FOOTER_LINK_HOVER; }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = FOOTER_BODY; }}
-            >
-              {item.label}
-            </button>
-          </li>
-        ))}
-      </ul>
+    <section className="hp-section hp-faq" aria-labelledby="faq-title"><div className="xpx-container hp-faq-layout">
+      <div><p className="hp-eyebrow">BEFORE YOU GO</p><h2 id="faq-title">A few things<br className="hp-desktop-break" /> to know</h2><p>More questions?<br /><a href={`mailto:${TEAM_EMAIL}`}>We’re here to help <ArrowRight size={14} /></a></p></div>
+      <div className="hp-faq-list">{FAQS.map(faq => <details key={faq.question}><summary>{faq.question}<ChevronDown size={18} aria-hidden /></summary><p>{faq.answer}</p></details>)}</div>
+    </div></section>
+
+    <section id="host" className="hp-section hp-host-section" aria-labelledby="host-title"><div className="xpx-container"><div className="hp-host">
+      <span className="hp-depth-icon" aria-hidden><Home size={26} /></span><div><h2 id="host-title">Have a place to share?</h2><p>Meet guests looking for their next stay.</p></div><button className="hp-button hp-button-outline" onClick={() => onNavigate('/auth/register')}>List your property <ArrowRight size={16} /></button>
+    </div></div></section>
+
+    <div className="xpx-container hp-credentials" aria-label="Recognition and ecosystem">
+      <span><img src={DPIIT_EMBLEM_PATH} width="30" height="30" alt="" loading="lazy" />DPIIT Recognized Startup</span>
+      <span><img src={IIT_ROORKEE_EMBLEM_PATH} width="30" height="30" alt="" loading="lazy" />Born from the IIT Roorkee Ecosystem</span>
     </div>
-  );
+    <footer className="hp-footer"><div className="xpx-container">
+      <div className="hp-footer-grid">
+        <div className="hp-footer-brand"><a className="hp-brand" href="/"><img src={XPRESSBNB_LOGO_PATH} width="30" height="30" alt="" /><span>Xpress<span>BnB</span></span></a><p>Direct stays. Real hosts.<br />A little closer to home.</p><XpModeSwitch /></div>
+        <nav aria-label="Explore destinations"><h3>Explore</h3>{HOMEPAGE_CITY_BUCKETS.map(city => <button key={city} onClick={() => onCityClick(city)}>{city}</button>)}</nav>
+        <nav aria-label="Hosting and company"><h3>XpressBnB</h3><button onClick={() => onNavigate('/auth/register')}>Become a host</button><button onClick={() => scrollTo('how-it-works')}>How it works</button><button onClick={() => openHomeOverlay('about')}>About us</button><button onClick={() => openHomeOverlay('blog')}>Journal</button></nav>
+        <nav aria-label="Help and legal"><h3>Here to help</h3><a href={`mailto:${TEAM_EMAIL}`}>Contact us</a><button onClick={() => openHomeOverlay('privacy')}>Privacy</button><button onClick={() => openHomeOverlay('terms')}>Terms</button><ManageCookiesLink /><a href="/images/homepage/credits.html" target="_blank" rel="noopener noreferrer">Photo credits</a></nav>
+      </div>
+      <div className="hp-footer-bottom"><span>© {new Date().getFullYear()} XpressBnB. All rights reserved.</span><span>Made for your next chapter.</span></div>
+    </div></footer>
+    {mapOpen && <Suspense fallback={<div role="status" className="hp-map-loading">Opening map… <button className="hp-button hp-button-outline" onClick={() => setMapOpen(false)}>Cancel</button></div>}><NearbyMapDiscovery properties={rankedNearby} distanceByPropertyId={distanceByPropertyId} userCity={nearby?.detectedCity} onClose={() => setMapOpen(false)} /></Suspense>}
+  </>;
 }

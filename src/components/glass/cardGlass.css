@@ -1,0 +1,43 @@
+/* Small live-backdrop materials only: no per-card canvas, renderer or pointer loop. */
+.xpx-card-glass {
+  background: #f7faf7;
+  color: #18392b;
+  border: 1px solid rgba(255,255,255,.86);
+  box-shadow: inset 0 1px 0 #fff, inset 0 -1px 0 #24473312, 0 3px 12px #10281b24;
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .xpx-card-glass {
+    background: linear-gradient(145deg,rgba(255,255,255,.9),rgba(241,249,242,.74));
+    backdrop-filter: blur(12px) saturate(1.2);
+    -webkit-backdrop-filter: blur(12px) saturate(1.2);
+  }
+  .xpx-card-glass-counter {
+    background: linear-gradient(145deg,rgba(255,255,255,.83),rgba(237,247,239,.72));
+    backdrop-filter: blur(8px) saturate(1.15);
+    -webkit-backdrop-filter: blur(8px) saturate(1.15);
+  }
+}
+.xpx-card-glass-price { overflow: hidden; }
+.xpx-card-glass-save {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+.xpx-card-glass-save[aria-pressed="true"] { border-color: #ffd5b8; box-shadow: inset 0 1px 0 #fff, 0 3px 12px #10281b24; }
+.xpx-card-glass-save:focus-visible { outline: 3px solid #047857; outline-offset: 3px; }
+.xpx-card-glass-save:active { transform: scale(.94); box-shadow: inset 0 1px 4px #23412c24, 0 1px 4px #10281b20; }
+@media (hover: hover) and (pointer: fine) {
+  .xpx-card-glass-save:hover { transform: translateY(-1px); box-shadow: inset 0 1px 0 #fff, 0 5px 15px #10281b30; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .xpx-card-glass-save { transition: none; }
+  .xpx-card-glass-save:hover, .xpx-card-glass-save:active { transform: none; }
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .xpx-card-glass { background: #f7faf7; backdrop-filter: none; -webkit-backdrop-filter: none; border-color: #657d6d; }
+}
+@media (forced-colors: active) {
+  .xpx-card-glass { background: Canvas; color: CanvasText; border: 1px solid CanvasText; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .xpx-card-glass * { color: CanvasText !important; }
+  .xpx-card-glass-save[aria-pressed="true"] { border: 2px solid Highlight; }
+}

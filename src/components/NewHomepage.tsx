@@ -1,635 +1,158 @@
-import { lazy, Suspense, useMemo, type CSSProperties } from 'react';
-import { useState, useEffect, useRef } from 'react';
-import {
-  CheckCircle,
-  ShieldCheck,
-  Zap,
-  Lock,
-  Menu,
-  X,
-} from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { ArrowRight, Heart, MapPin, Menu, Search, X } from 'lucide-react';
 import { XPRESSBNB_LOGO_PATH } from '../lib/branding';
 import SEOHead from './SEOHead';
 import { generateOrganizationStructuredData } from '../lib/seo';
 import { addDaysIso, parseTripFromSearch } from '../lib/tripSearch';
-import { scrollToId } from '../lib/smoothScroll';
-import { readScrollAnchorOffset } from '../lib/layoutTokens';
-import XpModeSwitch from './XpModeSwitch';
-import HomepageBelowFoldGate from './HomepageBelowFoldGate';
-import HeroSearchBar from './search/HeroSearchBar';
-import InstitutionalCredibilityStrip from './InstitutionalCredibilityStrip';
-import { useNearbyLocationOptional } from '../contexts/NearbyLocationContext';
-import { useGuestOnboardingOptional } from '../contexts/GuestOnboardingContext';
-import { usePrefersReducedMotion } from '../hooks/useGalleryMotion';
-import { useStickySearchMorph } from '../hooks/useStickySearchMorph';
+import { HOMEPAGE_CITY_BUCKETS } from '../lib/cityBuckets';
+import { navigateTo } from '../lib/navigation';
 import { prefetchStaysListingRouteChunk } from '../lib/listingRouteChunk';
-import { readLocationPreference } from '../lib/locationPreferences';
-
-const PersonalizedHomeFeed = lazy(() => import('./nearby/PersonalizedHomeFeed'));
-
-// Global brand system (premium minimal emerald scale).
-const ACCENT = '#059669';
-const ACCENT_DARK = '#047857';
-const ACCENT_LIGHT = '#ecfdf5';
-const BASE = '#FAFAF8';
-const SURFACE = '#FFFFFF';
-const SURFACE_LIGHT = '#F8FAFC';
-const TEXT = '#0F172A';
-const TEXT_MUTED = '#64748B';
-const BORDER = '#E5E7EB';
-/**
- * Pexels CDN: keep `w` modest for first paint (LCP). Pattern:
- * `https://images.pexels.com/photos/<id>/pexels-photo-<id>.jpeg?auto=compress&cs=tinysrgb&w=<width>`
- */
-const HERO_PEXELS_W_DESKTOP = 1280;
-const HERO_IMAGE_WIDTHS = [375, 768, HERO_PEXELS_W_DESKTOP] as const;
-/** Full-bleed hero — image width always matches viewport. */
-const HERO_IMAGE_SIZES = '100vw';
-
-function pexelsPhotoUrl(photoId: string, width: number) {
-  return `https://images.pexels.com/photos/${photoId}/pexels-photo-${photoId}.jpeg?auto=compress&cs=tinysrgb&w=${width}`;
-}
-
-function heroPexelsSrcSet(photoId: string): string {
-  return HERO_IMAGE_WIDTHS.map((w) => `${pexelsPhotoUrl(photoId, w)} ${w}w`).join(', ');
-}
-
-function heroPexelsSrc(photoId: string): string {
-  return pexelsPhotoUrl(photoId, HERO_PEXELS_W_DESKTOP);
-}
-
-/** Intrinsic 16:9 hints for hero `<img>` (object-cover; real aspect may vary slightly). */
-const HERO_IMG_INTRINSIC = { width: 1920, height: 1080 } as const;
-
-const HERO_SLIDE_META = [
-  { city: 'Gurgaon', tagline: 'Corporate hub, premium stays', photoId: '1571460' },
-  { city: 'Delhi', tagline: 'Capital stays, direct pricing', photoId: '2506988' },
-  { city: 'Rishikesh', tagline: 'Yoga capital, riverside retreats', photoId: '2161449' },
-  { city: 'Noida', tagline: 'Modern city, host-listed comfort', photoId: '1396122' },
-  {
-    city: 'Greater Noida',
-    tagline: 'Spacious homes, serene surroundings',
-    photoId: '1643383',
-  },
-] as const;
-
-const HERO_SLIDES = HERO_SLIDE_META.map(({ city, tagline, photoId }) => ({
-  city,
-  tagline,
-  photoId,
-  src: heroPexelsSrc(photoId),
-  srcSet: heroPexelsSrcSet(photoId),
-}));
-
-const CITIES = ['Delhi', 'Gurgaon', 'Noida', 'Greater Noida', 'Ghaziabad', 'Rishikesh', 'Dehradun'];
-
-import { INQUIRY_GUEST_TAGLINE } from '../lib/inquiryCopy';
-
-const BELOW_FOLD_ANCHOR_IDS = new Set(['listings', 'host', 'why', 'how-it-works']);
-const PERSONALIZED_CROSSFADE_MS = 220;
-
-const TRUST_BADGES = [
-  {
-    icon: CheckCircle,
-    label: 'Direct from hosts',
-    subtext: 'Listed prices, no guest commission',
-  },
-  {
-    icon: Lock,
-    label: 'Private inquiry',
-    subtext: 'Details reviewed before host contact',
-  },
-  {
-    icon: Zap,
-    label: 'Zero commission',
-    subtext: 'No platform fees on your stay',
-  },
-  {
-    icon: ShieldCheck,
-    label: 'Transparent pricing',
-    subtext: 'Total shown before you inquire',
-  },
-];
+import { useNearbyLocationOptional } from '../contexts/NearbyLocationContext';
+import HomepageBelowFold from './HomepageBelowFold';
+import HomepageSearch from './homepage/HomepageSearch';
+import { buildHomepageSearchPath, isHomepageDate, localToday } from '../lib/homepageSearch';
+import './homepage/homepage.css';
+import GlassSurface from './glass/GlassSurface';
 
 export default function NewHomepage() {
-  const [scrolled, setScrolled] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [heroIndex, setHeroIndex] = useState(0);
-  /** Slides that have ever been active — mount `<img>` only for these (starts {0} for LCP). */
-  const heroSlidesWithImgRef = useRef(new Set<number>([0]));
-  heroSlidesWithImgRef.current.add(heroIndex);
-
-  const activateBelowFoldRef = useRef<(() => void) | null>(null);
-  const heroSearchSentinelRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const next = (heroIndex + 1) % HERO_SLIDES.length;
-    const slide = HERO_SLIDES[next];
-    const img = new Image();
-    img.sizes = HERO_IMAGE_SIZES;
-    img.srcset = slide.srcSet;
-    img.src = slide.src;
-  }, [heroIndex]);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 60);
-    window.addEventListener('scroll', onScroll, { passive: true });
-    onScroll();
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
-  useEffect(() => {
-    const onResize = () => {
-      if (typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches) {
-        setMobileNavOpen(false);
-      }
-    };
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      setHeroIndex(i => (i + 1) % HERO_SLIDES.length);
-    }, 6000);
-    return () => clearInterval(id);
-  }, []);
-
-  const scrollTo = (id: string) => {
-    if (BELOW_FOLD_ANCHOR_IDS.has(id)) {
-      activateBelowFoldRef.current?.();
-    }
-    requestAnimationFrame(() => {
-      scrollToId(id, { offset: readScrollAnchorOffset(), duration: 1.05 });
-    });
-  };
-
-  const navigate = (path: string) => {
-    window.history.pushState({}, '', path);
-    window.dispatchEvent(new PopStateEvent('popstate'));
-  };
-
-  const handleCityClick = (city: string) => {
-    const slug = city.toLowerCase().replace(/\s+/g, '-');
-    prefetchStaysListingRouteChunk(slug);
-    navigate(`/stays/${slug}`);
-  };
-
-  // Hero search state — city + dates + guests, all serializable into the URL
-  // so /stays/<city>?checkin=...&checkout=...&guests=N stays shareable.
-  const [searchCity, setSearchCity] = useState<string>('Delhi');
-  const [searchCheckin, setSearchCheckin] = useState<string>('');
-  const [searchCheckout, setSearchCheckout] = useState<string>('');
-  const [searchGuests, setSearchGuests] = useState<number>(2);
-
-  useEffect(() => {
-    if (window.location.pathname !== '/') return;
-    const t = parseTripFromSearch(window.location.search);
-    if (t.checkin) setSearchCheckin(t.checkin);
-    if (t.checkout) setSearchCheckout(t.checkout);
-    if (t.guests != null && t.guests > 0) setSearchGuests(t.guests);
-  }, []);
-
-  const handleSearchCheckin = (v: string) => {
-    setSearchCheckin(v);
-    setSearchCheckout(prev => {
-      if (!v) return prev;
-      if (!prev || prev <= v) return addDaysIso(v, 1);
-      return prev;
-    });
-  };
-
-  const handleSearchCheckout = (v: string) => {
-    if (searchCheckin && v && v <= searchCheckin) {
-      setSearchCheckout(addDaysIso(searchCheckin, 1));
-      return;
-    }
-    setSearchCheckout(v);
-  };
-
-  const handleHeroSearch = () => {
-    const today = new Date().toISOString().split('T')[0];
-    let cin = searchCheckin;
-    let cout = searchCheckout;
-    if (cin && cin < today) cin = today;
-    if (cin && !cout) cout = addDaysIso(cin, 1);
-    if (
-      cin &&
-      cout &&
-      new Date(`${cout}T12:00:00`).getTime() <= new Date(`${cin}T12:00:00`).getTime()
-    ) {
-      cout = addDaysIso(cin, 1);
-    }
-    const slug = searchCity.toLowerCase().replace(/\s+/g, '-');
-    const params = new URLSearchParams();
-    if (cin) params.set('checkin', cin);
-    if (cout) params.set('checkout', cout);
-    if (searchGuests) params.set('guests', String(searchGuests));
-    const qs = params.toString();
-    prefetchStaysListingRouteChunk(slug);
-    navigate(`/stays/${slug}${qs ? `?${qs}` : ''}`);
-  };
-
+  const menuButton = useRef<HTMLButtonElement>(null);
+  const heroSearch = useRef<HTMLDivElement>(null);
+  const heroBackdrop = useRef<HTMLDivElement>(null);
+  const [stickySearch, setStickySearch] = useState(false);
   const nearby = useNearbyLocationOptional();
-  const onboarding = useGuestOnboardingOptional();
-  const reducedMotion = usePrefersReducedMotion();
-  const hasPersonalizedLocation =
-    nearby?.permission === 'granted' &&
-    Boolean(nearby.coords ?? readLocationPreference()?.coords);
-  const wantsPersonalized = hasPersonalizedLocation;
-  const showPersonalized = wantsPersonalized && (onboarding?.isOnboardingSettled ?? true);
-  const stickySearchActive = useStickySearchMorph(heroSearchSentinelRef, !showPersonalized);
-
-  const nearbyLocationLabel = useMemo(() => {
-    if (!nearby) return null;
-    if (nearby.permission === 'granted') {
-      const city =
-        nearby.detectedCity?.split(',')[0] ?? nearby.locationLabel?.split(',')[0] ?? null;
-      return city ? `Near ${city}` : 'Around you';
-    }
-    return 'Choose location';
-  }, [nearby]);
-
-  const handleSearchLocationClick = () => {
-    navigate('/explore');
-  };
-
-  const searchBarProps = {
-    cities: CITIES,
-    city: searchCity,
-    onCityChange: setSearchCity,
-    checkin: searchCheckin,
-    onCheckinChange: handleSearchCheckin,
-    checkout: searchCheckout,
-    onCheckoutChange: handleSearchCheckout,
-    guests: searchGuests,
-    onGuestsChange: setSearchGuests,
-    onSearch: handleHeroSearch,
-    locationLabel: nearbyLocationLabel,
-    onLocationClick: handleSearchLocationClick,
-  };
-
-  const crossfadeStyle = (active: boolean): CSSProperties => ({
-    opacity: active ? 1 : 0,
-    pointerEvents: active ? 'auto' : 'none',
-    transition: reducedMotion ? 'none' : `opacity ${PERSONALIZED_CROSSFADE_MS}ms cubic-bezier(0.16, 1, 0.3, 1)`,
+  const [city, setCity] = useState('Delhi');
+  const [trip, setTrip] = useState(() => {
+    const initial = parseTripFromSearch(window.location.search);
+    return { checkin: isHomepageDate(initial.checkin || '') ? initial.checkin! : '', checkout: isHomepageDate(initial.checkout || '') ? initial.checkout! : '', guests: initial.guests || 2 };
   });
 
-  const standardHomepage = (
-    <div className="min-h-screen relative overflow-x-clip" style={{ background: BASE, color: TEXT }}>
-      <SEOHead
-        config={{
-          title:
-            'XpressBnB - Direct Stays in Delhi NCR | Zero Guest Commission',
-          description:
-            'Send inquiries for direct host stays in Delhi, Gurgaon, Noida and Rishikesh. No brokerage, zero guest commission.',
-          keywords:
-            'direct stays delhi, no brokerage apartments, premium stays noida, gurgaon serviced apartments, rishikesh retreats',
-          canonical: 'https://xpressbnb.com',
-          structuredData: generateOrganizationStructuredData(),
-        }}
-      />
+  useEffect(() => {
+    const node = heroSearch.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      // Only show the shortcut after passing search, never while it is below the fold.
+      setStickySearch(!entry.isIntersecting && entry.boundingClientRect.top < 0);
+    }, { rootMargin: '-76px 0px 0px 0px' });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
 
-      {/* ──── Top chrome — safe-area aware, sticky search morph on mobile ──── */}
-      <header
-        className="fixed top-0 left-0 right-0 z-50 xpx-top-chrome transition-[border-color,box-shadow] duration-200"
-        style={{
-          background: SURFACE,
-          borderBottom: scrolled || stickySearchActive ? `1px solid ${BORDER}` : `1px solid rgba(226, 232, 240, 0.65)`,
-          boxShadow:
-            scrolled || stickySearchActive ? '0 4px 24px rgba(15, 23, 42, 0.06)' : 'none',
-        }}
-      >
-        <div className="xpx-container xpx-nav-row grid grid-cols-[auto_1fr_auto] lg:grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-4">
-          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 justify-self-start">
-            <button
-              type="button"
-              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              className="flex items-center gap-2 min-w-0 text-left shrink"
-              aria-label="XpressBnB home"
-            >
-              <img
-                src={XPRESSBNB_LOGO_PATH}
-                alt=""
-                className={`object-contain shrink-0 transition-all duration-200 ${
-                  scrolled || stickySearchActive ? 'h-8 w-8 sm:h-9 sm:w-9' : 'h-9 w-9 sm:h-10 sm:w-10'
-                }`}
-                width={40}
-                height={40}
-                decoding="async"
-                fetchPriority="low"
-              />
-              <span
-                className="hidden sm:inline truncate text-[22px] sm:text-[24px] leading-none"
-                style={{
-                  letterSpacing: '-0.03em',
-                  textShadow: '0 1px 2px rgba(15,23,42,0.18)',
-                }}
-              >
-                <span style={{ color: TEXT, fontWeight: 800 }}>Xpress</span>
-                <span style={{ color: '#34D399', fontWeight: 800 }}>BnB</span>
-              </span>
-            </button>
-            <XpModeSwitch />
-          </div>
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && mobileNavOpen) {
+        setMobileNavOpen(false);
+        menuButton.current?.focus();
+      }
+    };
+    const desktop = window.matchMedia('(min-width: 1024px)');
+    const onResize = () => { if (desktop.matches) setMobileNavOpen(false); };
+    document.addEventListener('keydown', onKeyDown);
+    desktop.addEventListener('change', onResize);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      desktop.removeEventListener('change', onResize);
+    };
+  }, [mobileNavOpen]);
 
-          <nav className="hidden lg:flex items-center justify-center gap-1 justify-self-center">
-            {['Stays', 'Host', 'About'].map(label => (
-              <button
-                key={label}
-                type="button"
-                onClick={() =>
-                  label === 'Host'
-                    ? navigate('/auth/login')
-                    : scrollTo(label === 'Stays' ? 'listings' : label === 'About' ? 'how-it-works' : 'listings')
-                }
-                className="px-3 py-2.5 rounded-lg text-sm font-medium transition-colors min-h-[48px] inline-flex items-center"
-                style={{ color: TEXT }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.color = ACCENT;
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.color = TEXT;
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          </nav>
-
-          <div className="flex items-center justify-end gap-1 sm:gap-2 shrink-0 justify-self-end">
-            <button
-              type="button"
-              onClick={() => navigate('/auth/login')}
-              className="hidden md:inline-flex items-center justify-center px-3 sm:px-4 rounded-lg text-sm font-medium transition-colors min-h-[48px]"
-              style={{ color: TEXT }}
-              onMouseEnter={e => {
-                e.currentTarget.style.color = ACCENT;
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.color = TEXT;
-              }}
-            >
-              Log in
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/auth/register')}
-              className="inline-flex items-center justify-center rounded-lg px-2 sm:px-3 md:px-4 text-[11px] sm:text-xs md:text-sm font-semibold text-white transition-colors whitespace-nowrap min-h-[48px] shrink touch-manipulation"
-              style={{ background: ACCENT }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = ACCENT_DARK;
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = ACCENT;
-              }}
-            >
-              <span className="hidden md:inline">List your property</span>
-              <span className="md:hidden">List property</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setMobileNavOpen(o => !o)}
-              className="lg:hidden inline-flex h-12 w-12 items-center justify-center rounded-lg transition-colors touch-manipulation"
-              style={{ color: TEXT }}
-              aria-expanded={mobileNavOpen}
-              aria-label={mobileNavOpen ? 'Close menu' : 'Open menu'}
-            >
-              {mobileNavOpen ? <X className="h-6 w-6" strokeWidth={2} /> : <Menu className="h-6 w-6" strokeWidth={2} />}
-            </button>
-          </div>
-        </div>
-
-        <div
-          className="md:hidden overflow-hidden xpx-container"
-          style={{
-            maxHeight: stickySearchActive ? 'var(--xpx-sticky-search-height)' : 0,
-            opacity: stickySearchActive ? 1 : 0,
-            paddingBottom: stickySearchActive ? '0.5rem' : 0,
-            transition: reducedMotion
-              ? 'none'
-              : 'max-height 220ms cubic-bezier(0.16, 1, 0.3, 1), opacity 220ms cubic-bezier(0.16, 1, 0.3, 1), padding-bottom 220ms cubic-bezier(0.16, 1, 0.3, 1)',
-          }}
-          aria-hidden={!stickySearchActive}
-        >
-          <HeroSearchBar {...searchBarProps} variant="compact" />
-        </div>
-
-        {mobileNavOpen && (
-          <div
-            className="lg:hidden border-t overflow-hidden"
-            style={{
-              background: SURFACE,
-              borderColor: BORDER,
-            }}
-          >
-            <nav className="xpx-container py-3 flex flex-col">
-              {['Stays', 'Host', 'About'].map(label => (
-                <button
-                  key={label}
-                  type="button"
-                  onClick={() => {
-                    setMobileNavOpen(false);
-                    if (label === 'Host') {
-                      navigate('/auth/login');
-                    } else {
-                      scrollTo(label === 'Stays' ? 'listings' : label === 'About' ? 'how-it-works' : 'listings');
-                    }
-                  }}
-                  className="w-full text-left py-3.5 px-2 rounded-lg text-[15px] font-medium min-h-[48px] flex items-center touch-manipulation"
-                  style={{ color: TEXT }}
-                >
-                  {label}
-                </button>
-              ))}
-              <div className="border-t mt-2 pt-2 md:hidden" style={{ borderColor: BORDER }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMobileNavOpen(false);
-                    navigate('/auth/login');
-                  }}
-                  className="w-full text-left py-3.5 px-2 rounded-lg text-[15px] font-medium min-h-[48px] flex items-center touch-manipulation"
-                  style={{ color: TEXT }}
-                >
-                  Log in
-                </button>
-              </div>
-            </nav>
-          </div>
-        )}
-      </header>
-
-      {/* ──── Hero ──── */}
-      <section
-        className="relative w-full overflow-hidden"
-        style={{ height: 'clamp(380px, 65svh, 520px)', minHeight: 380 }}
-      >
-        {HERO_SLIDES.map((slide, i) => (
-          <div
-            key={slide.city}
-            className="absolute inset-0"
-            style={{
-              opacity: i === heroIndex ? 1 : 0,
-              transition: 'opacity 1800ms ease-in-out',
-            }}
-          >
-            {heroSlidesWithImgRef.current.has(i) ? (
-              <img
-                src={slide.src}
-                srcSet={slide.srcSet}
-                alt=""
-                aria-hidden
-                className="absolute inset-0 h-full w-full max-w-none object-cover"
-                width={HERO_IMG_INTRINSIC.width}
-                height={HERO_IMG_INTRINSIC.height}
-                sizes={HERO_IMAGE_SIZES}
-                loading={i === heroIndex ? 'eager' : 'lazy'}
-                fetchPriority={i === heroIndex ? 'high' : 'low'}
-                decoding="async"
-                style={{
-                  transform: i === heroIndex ? 'scale(1.08)' : 'scale(1)',
-                  transition: 'transform 12000ms ease-out',
-                }}
-              />
-            ) : null}
-          </div>
-        ))}
-        {/* Gradient overlay — fades from 35% dark at top to the new off-white
-            at the bottom, so the section seam into the cream Trust Strip is
-            seamless. Avoids the old hard cinematic-black handoff. */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background:
-              'linear-gradient(180deg, rgba(2,6,23,0.66) 0%, rgba(2,6,23,0.52) 42%, rgba(2,6,23,0.36) 72%, rgba(2,6,23,0.22) 100%)',
-          }}
-        />
-
-        <div className="relative z-[1] h-full xpx-container xpx-nav-offset pb-6 md:pb-10">
-          <div className="h-full flex flex-col justify-end md:justify-center">
-            <div
-              className="max-w-3xl"
-              style={{ animation: 'fadeInUp 560ms cubic-bezier(0.22, 1, 0.36, 1) both' }}
-            >
-              <h1
-                className="text-white font-extrabold tracking-tight"
-                style={{ fontSize: 'clamp(36px, 6.1vw, 76px)', lineHeight: 1.08, textShadow: '0 8px 28px rgba(2,6,23,0.45)' }}
-              >
-                Find your next stay
-              </h1>
-              <p
-                className="mt-4 max-w-2xl text-sm sm:text-base md:text-lg font-medium"
-                style={{ color: 'rgba(248,250,252,0.95)', textShadow: '0 2px 10px rgba(2,6,23,0.45)' }}
-              >
-                {INQUIRY_GUEST_TAGLINE}
-              </p>
-            </div>
-
-            <div
-              ref={heroSearchSentinelRef}
-              className="w-full max-w-5xl mt-5 md:mt-auto md:pb-0.5"
-              style={{ animation: 'xpx-search-float-in 620ms cubic-bezier(0.22, 1, 0.36, 1) 90ms both' }}
-            >
-              <HeroSearchBar {...searchBarProps} variant="hero" />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ──── Trust Strip ──── */}
-      <section
-        className="relative z-[2] -mt-7 md:-mt-10"
-        style={{ background: SURFACE_LIGHT, borderBottom: `1px solid ${BORDER}` }}
-      >
-        <div className="xpx-container">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 md:gap-3 py-5 md:py-6">
-            {TRUST_BADGES.map(({ icon: Icon, label, subtext }) => (
-              <div
-                key={label}
-                className="flex items-start gap-2.5 md:gap-3 px-3 md:px-4 py-3 rounded-2xl"
-                style={{
-                  background: SURFACE,
-                  border: `1px solid ${BORDER}`,
-                  boxShadow: '0 6px 18px rgba(15,23,42,0.05)',
-                }}
-              >
-                <div
-                  className="w-8 h-8 md:w-9 md:h-9 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ background: ACCENT_LIGHT }}
-                >
-                  <Icon className="w-4 h-4" style={{ color: ACCENT }} />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-[13px] md:text-sm font-semibold leading-tight" style={{ color: TEXT }}>
-                    {label}
-                  </div>
-                  <div className="text-xs mt-1 leading-tight" style={{ color: TEXT_MUTED }}>
-                    {subtext}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <InstitutionalCredibilityStrip />
-        </div>
-      </section>
-
-      <HomepageBelowFoldGate
-        onCityClick={handleCityClick}
-        onNavigate={navigate}
-        scrollTo={scrollTo}
-        onActivateRef={(activate) => {
-          activateBelowFoldRef.current = activate;
-        }}
-      />
-    </div>
-  );
-
-  if (!wantsPersonalized) {
-    return standardHomepage;
-  }
+  const go = (path: string) => { setMobileNavOpen(false); navigateTo(path); };
+  const scrollTo = (id: string) => {
+    setMobileNavOpen(false);
+    document.getElementById(id)?.scrollIntoView({
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start',
+    });
+  };
+  const onCityClick = (name: string) => {
+    const slug = name.toLowerCase().replace(/\s+/g, '-');
+    prefetchStaysListingRouteChunk(slug);
+    go(`/stays/${slug}`);
+  };
+  const onSearch = () => {
+    prefetchStaysListingRouteChunk(city.toLowerCase().replace(/\s+/g, '-'));
+    go(buildHomepageSearchPath(city, trip, localToday()));
+  };
+  const editSearch = () => {
+    scrollTo('home-search');
+    heroSearch.current?.querySelector<HTMLSelectElement>('select')?.focus({ preventScroll: true });
+  };
 
   return (
-    <div className="relative min-h-screen" style={{ background: BASE }}>
-      <div
-        className="min-h-screen"
-        style={{
-          ...crossfadeStyle(showPersonalized),
-          position: showPersonalized ? 'relative' : 'absolute',
-          inset: 0,
-          width: '100%',
-        }}
-        aria-hidden={!showPersonalized}
-      >
-        <SEOHead
-          config={{
-            title: `Stays near ${nearby?.detectedCity ?? 'you'} | XpressBnB`,
-            description:
-              'Personalized stays near you. Zero commission, direct from hosts.',
-            keywords: 'nearby stays, direct host homes, xpressbnb',
-            canonical: 'https://xpressbnb.com',
-            structuredData: generateOrganizationStructuredData(),
-          }}
-        />
-        <Suspense fallback={null}>
-          <PersonalizedHomeFeed
-            onNavigate={navigate}
-            compactSearch={<HeroSearchBar {...searchBarProps} variant="compact" />}
-          />
-        </Suspense>
-      </div>
-      <div
-        style={{
-          ...crossfadeStyle(!showPersonalized),
-          position: showPersonalized ? 'absolute' : 'relative',
-          inset: 0,
-          width: '100%',
-        }}
-        aria-hidden={showPersonalized}
-      >
-        {standardHomepage}
-      </div>
+    <div className="hp-page">
+      <SEOHead config={{
+        title: 'XpressBnB - Direct Stays in Delhi NCR | Zero Guest Commission',
+        description: 'Explore direct host stays in Delhi, Gurgaon, Noida and nearby escapes. Send a private inquiry. Zero guest commission.',
+        keywords: 'direct stays delhi, no brokerage apartments, premium stays noida, gurgaon serviced apartments, rishikesh retreats',
+        canonical: 'https://xpressbnb.com', structuredData: generateOrganizationStructuredData(),
+      }} />
+      <a className="hp-skip" href="#home-search">Skip to search</a>
+      <header className="hp-header xpx-top-chrome">
+        <GlassSurface className="hp-header-glass" radius={0}>
+        <div className="xpx-container hp-nav">
+          <a href="/" className="hp-brand" aria-label="XpressBnB home">
+            <img src={XPRESSBNB_LOGO_PATH} alt="" width="34" height="34" />
+            <span>Xpress<span>BnB</span></span>
+          </a>
+          <nav className="hp-desktop-nav" aria-label="Main navigation">
+            <button onClick={() => scrollTo('listings')}>Explore stays</button>
+            <button onClick={() => scrollTo('how-it-works')}>How it works</button>
+          </nav>
+          <div className="hp-nav-actions">
+            <button className="hp-saved" onClick={() => go('/saved')} aria-label="Saved stays"><Heart size={18} /><span>Saved</span></button>
+            <button className="hp-login" onClick={() => go('/auth/login')}>Log in</button>
+            <button className="hp-button hp-button-outline hp-nav-host" onClick={() => go('/auth/register')}>List your property</button>
+            <button ref={menuButton} className="hp-menu-button" aria-label={mobileNavOpen ? 'Close menu' : 'Open menu'} aria-expanded={mobileNavOpen} aria-controls="homepage-menu" onClick={() => setMobileNavOpen(!mobileNavOpen)}>
+              {mobileNavOpen ? <X size={22} /> : <Menu size={22} />}
+            </button>
+          </div>
+        </div>
+        {mobileNavOpen && <nav id="homepage-menu" className="hp-mobile-nav xpx-container" aria-label="Mobile navigation">
+          <button onClick={() => scrollTo('listings')}>Explore stays <ArrowRight size={16} /></button>
+          <button onClick={() => scrollTo('how-it-works')}>How it works</button>
+          <button onClick={() => go('/explore')}>Explore nearby</button>
+          <button onClick={() => go('/auth/login')}>Log in</button>
+          <button onClick={() => go('/auth/register')}>List your property</button>
+        </nav>}
+        {stickySearch && !mobileNavOpen && <div className="hp-sticky-search xpx-container">
+          <button onClick={editSearch}><Search size={17} /><span>{city}<small>Edit dates &amp; guests</small></span><span className="hp-sticky-edit">Search</span></button>
+        </div>}
+        </GlassSurface>
+      </header>
+      <main id="homepage-main">
+        <section className="hp-hero" aria-labelledby="home-title">
+          <div className="xpx-container">
+            <div className="hp-hero-grid">
+              <div className="hp-hero-copy">
+                <p className="hp-eyebrow"><span /> DIRECT HOST STAYS</p>
+                <h1 id="home-title">Your next stay.<br /><em>Closer to home.</em></h1>
+                <p className="hp-hero-description">Thoughtful spaces for weekends, work trips, and everything in between.</p>
+              </div>
+              <figure className="hp-hero-photo">
+                <div ref={heroBackdrop} className="hp-hero-backdrop">
+                <img src="/images/homepage/warm/hero-warm-1280.webp" srcSet="/images/homepage/warm/hero-warm-640.webp 640w, /images/homepage/warm/hero-warm-1280.webp 1280w" sizes="(max-width: 767px) 100vw, 55vw" width="1280" height="853" alt="Illustrated inspiration: a sunlit apartment with warm oak, sage cushions and a city balcony" fetchPriority="high" />
+                </div>
+                <figcaption><GlassSurface kind="lens" radius={26} backdropRef={heroBackdrop} className="hp-photo-glass">
+                  <button type="button" onClick={() => scrollTo('listings')}>Space to feel at home</button>
+                </GlassSurface></figcaption>
+              </figure>
+            </div>
+            <div ref={heroSearch} id="home-search" className="hp-search-anchor">
+              <HomepageSearch cities={HOMEPAGE_CITY_BUCKETS} city={city} onCityChange={setCity}
+                checkin={trip.checkin} checkout={trip.checkout} guests={trip.guests}
+                onCheckinChange={(value) => setTrip(previous => ({ ...previous, checkin: value, checkout: value && (!previous.checkout || previous.checkout <= value) ? addDaysIso(value, 1) : previous.checkout }))}
+                onCheckoutChange={(value) => setTrip(previous => ({ ...previous, checkout: value }))}
+                onGuestsChange={(value) => setTrip(previous => ({ ...previous, guests: value }))} onSearch={onSearch} />
+            </div>
+            <div className="hp-discovery-links">
+              <div><span className="hp-explore-label">Explore:</span>{['Delhi', 'Gurgaon', 'Noida', 'Rishikesh'].map(name => <button className={city === name ? 'hp-city-current' : undefined} key={name} onClick={() => onCityClick(name)}>{name}</button>)}</div>
+              <button className="hp-location-link" onClick={() => nearby ? nearby.requestLocation() : go('/explore')} disabled={nearby?.isLoading}>
+                <MapPin size={15} />{nearby?.isLoading ? 'Finding nearby stays…' : nearby?.permission === 'granted' ? 'Refresh my location' : 'Use my location'}
+              </button>
+            </div>
+            {nearby?.errorReason && nearby.errorReason !== 'inventory_load_failed' && <p className="hp-location-note" role="status">We couldn’t find your location. You can choose a city above.</p>}
+          </div>
+        </section>
+        <HomepageBelowFold onCityClick={onCityClick} onNavigate={go} scrollTo={scrollTo} />
+      </main>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import {
   Home,
   Building2,
+  Tag,
   Calendar,
   BookOpen,
   DollarSign,
@@ -83,6 +84,7 @@ export default function HostDashboardLayout({
   const navigation = [
     { id: 'overview', name: 'Overview', icon: Home, path: `/host/${hostId}/dashboard/overview` },
     { id: 'properties', name: 'Properties', icon: Building2, path: `/host/${hostId}/dashboard/properties` },
+    { id: 'brand', name: 'Brand', icon: Tag, path: `/host/${hostId}/dashboard/brand` },
     { id: 'calendar', name: 'Calendar', icon: Calendar, path: `/host/${hostId}/dashboard/calendar` },
     { id: 'bookings', name: 'Inquiries', icon: BookOpen, path: `/host/${hostId}/dashboard/bookings` },
     { id: 'earnings', name: 'Earnings', icon: DollarSign, path: `/host/${hostId}/dashboard/earnings` },

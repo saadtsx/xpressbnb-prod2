@@ -4,6 +4,7 @@ import type { SavedListingSnapshot } from '../lib/savedListingsStorage';
 import { theme } from '../lib/theme';
 import { trackXpressEvent } from '../lib/analytics';
 import { HeartOutlineIcon } from './icons/PropertyCardIcons';
+import './glass/cardGlass.css';
 
 type SaveListingButtonProps = {
   propertyId: string;
@@ -14,7 +15,7 @@ type SaveListingButtonProps = {
   /** `card` = absolute on listing image; `inline` = toolbar button */
   variant?: 'card' | 'inline';
   align?: 'left' | 'right';
-  presentation?: 'default' | 'editorial';
+  presentation?: 'default' | 'editorial' | 'glass';
 };
 
 export default function SaveListingButton({
@@ -28,8 +29,9 @@ export default function SaveListingButton({
 }: SaveListingButtonProps) {
   const { isSaved, toggleSnapshot } = useSavedListings();
   const saved = isSaved(propertyId);
+  const glass = variant === 'card' && presentation === 'glass';
 
-  const dim = size === 'md' ? 'w-11 h-11' : variant === 'card' ? 'w-10 h-10' : 'w-8 h-8';
+  const dim = size === 'md' || glass ? 'w-11 h-11' : variant === 'card' ? 'w-10 h-10' : 'w-8 h-8';
   const icon = variant === 'card' ? 'w-[18px] h-[18px]' : 'w-4 h-4';
 
   const positionClass =
@@ -40,7 +42,7 @@ export default function SaveListingButton({
         : 'inline-flex items-center gap-1.5 px-3 py-2';
 
   const interactionClass =
-    presentation === 'editorial'
+    presentation === 'editorial' || glass
       ? ''
       : 'transition-transform hover:scale-110 active:scale-95';
 
@@ -63,9 +65,9 @@ export default function SaveListingButton({
           action: nextSaved ? 'save' : 'unsave',
         });
       }}
-      className={`${positionClass} ${presentation === 'editorial' ? '' : 'rounded-full'} flex items-center justify-center ${interactionClass} ${inlineClass} ${className}`}
+      className={`${positionClass} ${presentation === 'editorial' ? '' : 'rounded-full'} flex items-center justify-center ${interactionClass} ${inlineClass} ${glass ? 'xpx-card-glass xpx-card-glass-save' : ''} ${className}`}
       style={
-        variant === 'card'
+        glass ? undefined : variant === 'card'
           ? {
               background: '#FFFFFF',
               boxShadow: '0 2px 8px rgba(0,0,0,0.08)',

@@ -37,6 +37,7 @@ const CalendarSyncPage = lazy(() => import('./pages/host/CalendarSyncPage'));
 const EarningsPage = lazy(() => import('./pages/host/EarningsPage'));
 const AnalyticsPage = lazy(() => import('./pages/host/AnalyticsPage'));
 const ReviewsPage = lazy(() => import('./pages/host/ReviewsPage'));
+const BrandPage = lazy(() => import('./pages/host/BrandPage'));
 const SubscriptionPage = lazy(() => import('./pages/host/SubscriptionPage'));
 const SupportPage = lazy(() => import('./pages/host/SupportPage'));
 const ImportPage = lazy(() => import('./pages/host/ImportPage'));
@@ -164,16 +165,13 @@ export default function AppRouter() {
             {page === 'earnings' && <EarningsPage />}
             {page === 'realtime' && <AnalyticsPage />}
             {page === 'reviews' && <ReviewsPage />}
+            {page === 'brand' && <BrandPage />}
             {page === 'subscription' && <SubscriptionPage />}
             {page === 'settings' && <SettingsPage />}
             {page === 'support' && <SupportPage />}
           </HostDashboardLayout>
         );
       }
-    }
-
-    if (sessionReady && user && !host && !hostLoading) {
-      return <HostProfileError onRetry={() => window.location.reload()} onSignOut={signOut} />;
     }
 
     const homeOverlay = getHomeOverlayPage();
@@ -190,6 +188,10 @@ export default function AppRouter() {
       return <TermsPage onClose={closeHomeOverlay} />;
     }
 
+    if (sessionReady && user && !host && !hostLoading) {
+      return <HostProfileError onRetry={() => window.location.reload()} onSignOut={signOut} />;
+    }
+
     return <NewHomepage />;
   };
 
@@ -202,7 +204,12 @@ export default function AppRouter() {
     <NearbyLocationShell autoPrompt={false}>
       <GuestOnboardingProvider enabled={isGuestMarketplace}>
         <Suspense fallback={<RouteFallback />}>
-          <div key={locationKey} className={isGuestMarketplace ? 'xpx-route-enter' : undefined}>
+          <div
+            key={locationKey}
+            className={
+              isGuestMarketplace && !getHomeOverlayPage() ? 'xpx-route-enter' : undefined
+            }
+          >
             {renderContent()}
           </div>
         </Suspense>
@@ -214,7 +221,8 @@ export default function AppRouter() {
           hidden={
             currentPath.startsWith('/booking/') ||
             currentPath.startsWith('/inquiry/success/') ||
-            currentPath.startsWith('/guest/welcome/')
+            currentPath.startsWith('/guest/welcome/') ||
+            Boolean(getHomeOverlayPage())
           }
         />
         <MobileBottomNav currentPath={currentPath} onNavigate={handleNavigate} />

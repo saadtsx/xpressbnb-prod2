@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Property } from '../lib/database.types';
 import ConversionPropertyCard from './ConversionPropertyCard';
+import HomepageStaysRail from './homepage/HomepageStaysRail';
 import { useInViewport, usePrefersReducedMotion } from '../hooks/useGalleryMotion';
 
 const MOBILE_AUTOPLAY_MS = 4000;
@@ -58,6 +59,8 @@ const CarouselSlide = memo(function CarouselSlide({
 
 type FeaturedStaysCarouselProps = {
   properties: Property[];
+  /** Approved homepage: three desktop cards, one full-width mobile card. */
+  presentation?: 'default' | 'homepage';
   /** Optional distance map for nearby personalization */
   distanceByPropertyId?: Record<string, number>;
 };
@@ -66,7 +69,11 @@ type FeaturedStaysCarouselProps = {
  * GPU-accelerated Featured Stays carousel — VRBO-level mobile UX.
  * Mobile: peek layout, velocity swipe, idle autoplay. Desktop: manual arrows.
  */
-export default function FeaturedStaysCarousel({
+export default function FeaturedStaysCarousel(props: FeaturedStaysCarouselProps) {
+  return props.presentation === 'homepage' ? <HomepageStaysRail properties={props.properties} distanceByPropertyId={props.distanceByPropertyId} /> : <LegacyFeaturedStaysCarousel {...props} />;
+}
+
+function LegacyFeaturedStaysCarousel({
   properties,
   distanceByPropertyId,
 }: FeaturedStaysCarouselProps) {

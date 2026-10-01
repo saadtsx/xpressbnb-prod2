@@ -17,6 +17,7 @@ import { openStayScoreInfo } from '../lib/stayScoreEducation';
 import SaveListingButton from './SaveListingButton';
 import PropertyCardHostRow from './PropertyCardHostRow';
 import PropertyCardGallery from './PropertyCardGallery';
+import './glass/cardGlass.css';
 import { snapshotFromProperty } from '../lib/savedListingsStorage';
 import { listPropertyImages } from '../lib/propertyImages';
 import { trackXpressEvent } from '../lib/analytics';
@@ -65,19 +66,10 @@ function formatLocation(city: string, state: string): string {
 function HostPriceTag({ price }: { price: string }) {
   return (
     <div className="pointer-events-none absolute bottom-3 left-3 z-10 max-w-[calc(100%-5.5rem)]">
-      <div
-        className="rounded-lg px-2.5 py-1.5"
-        style={{
-          background: 'rgba(255,255,255,0.94)',
-          backdropFilter: 'blur(10px)',
-          WebkitBackdropFilter: 'blur(10px)',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-          border: '1px solid rgba(255,255,255,0.65)',
-        }}
-      >
+      <div className="xpx-card-glass xpx-card-glass-price rounded-xl px-2.5 py-2">
         <p className="leading-none whitespace-nowrap">
           <span className="text-[15px] font-bold tabular-nums text-[#111827]">₹{price}</span>
-          <span className="text-[11px] font-medium text-[#6B7280]"> / night</span>
+          <span className="text-[11px] font-medium text-[#46594f]"> / night</span>
         </p>
         <div className="mt-1 flex items-center gap-1.5">
           <span
@@ -88,7 +80,7 @@ function HostPriceTag({ price }: { price: string }) {
             }}
             aria-hidden
           />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.04em] text-[#059669]">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.04em] text-[#046348]">
             Host listed
           </span>
         </div>
@@ -200,7 +192,7 @@ export default memo(function ConversionPropertyCard({
       role="link"
       tabIndex={0}
       onKeyDown={(e) => {
-        if (e.key === 'Enter') handleClick();
+        if (e.target === e.currentTarget && e.key === 'Enter') handleClick();
       }}
       className={`xpx-property-card group flex h-full w-full max-w-[380px] cursor-pointer flex-col overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-[#059669] motion-reduce:transition-none ${className}`}
     >
@@ -216,14 +208,15 @@ export default memo(function ConversionPropertyCard({
         <SaveListingButton
           propertyId={property.id}
           getSnapshot={() => snapshotFromProperty(property)}
+          presentation="glass"
         />
 
         <HostPriceTag price={price} />
 
         {imageCount > 0 && (
           <div
-            className="pointer-events-none absolute bottom-3 right-3 z-10 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium text-white"
-            style={{ background: 'rgba(0,0,0,0.55)' }}
+            className="xpx-card-glass xpx-card-glass-counter pointer-events-none absolute bottom-3 right-3 z-10 inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[11px] font-semibold"
+            aria-label={`Photo ${Math.min(galleryIndex + 1, imageCount)} of ${imageCount}`}
           >
             <ImageGalleryIcon className="h-3.5 w-3.5" />
             <span className="tabular-nums">

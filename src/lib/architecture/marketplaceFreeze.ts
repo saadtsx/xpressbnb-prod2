@@ -8,6 +8,7 @@
 export const MARKETPLACE_CARD_IMPORT_ALLOWLIST = [
   'components/ConversionPropertyCard.tsx',
   'components/FeaturedStaysCarousel.tsx',
+  'components/homepage/HomepageStaysRail.tsx',
   'components/listing/ListingPropertyCardSkeleton.tsx',
   'components/nearby/NearbyMapDiscovery.tsx',
   'pages/CityListingPage.tsx',

@@ -1,7 +1,6 @@
 import { Home, Compass, Bookmark, User } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-
-const ACCENT = '#059669';
+import GlassSurface from './glass/GlassSurface';
 
 interface MobileBottomNavProps {
   currentPath: string;
@@ -26,7 +25,10 @@ export default function MobileBottomNav({ currentPath, onNavigate }: MobileBotto
     currentPath.startsWith('/inquiry/success/') ||
     currentPath.startsWith('/guest/welcome/') ||
     currentPath.includes('/property/') ||
-    currentPath.startsWith('/booking/');
+    currentPath.startsWith('/booking/') ||
+    ['about', 'blog', 'privacy', 'terms'].includes(
+      new URLSearchParams(window.location.search).get('page') ?? '',
+    );
 
   if (shouldHide) return null;
 
@@ -59,22 +61,11 @@ export default function MobileBottomNav({ currentPath, onNavigate }: MobileBotto
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-40 md:hidden"
+      className="xpx-glass-dock fixed bottom-0 left-0 right-0 z-40 md:hidden"
+      data-homepage={currentPath === '/' || currentPath === '' ? 'true' : undefined}
       aria-label="Primary"
     >
-      <div
-        // Frosted-white floating bar with a subtle slate hairline up top.
-        // Using svh-style sizing so the bar doesn't shift when the URL bar
-        // collapses on scroll.
-        style={{
-          background: 'rgba(255,255,255,0.85)',
-          backdropFilter: 'blur(24px) saturate(1.8)',
-          WebkitBackdropFilter: 'blur(24px) saturate(1.8)',
-          borderTop: '1px solid var(--xpx-border)',
-          boxShadow: '0 -8px 32px rgba(15,23,42,0.04)',
-          paddingBottom: 'env(safe-area-inset-bottom)',
-        }}
-      >
+      <GlassSurface className="xpx-bottom-glass" radius={currentPath === '/' || currentPath === '' ? 0 : 28}>
         <div className="flex items-stretch justify-around px-2" style={{ minHeight: 64 }}>
           {TABS.map(tab => {
             const isActive = activeTab === tab.id;
@@ -85,7 +76,7 @@ export default function MobileBottomNav({ currentPath, onNavigate }: MobileBotto
                 onClick={() => handleTabClick(tab)}
                 className="relative flex-1 flex flex-col items-center justify-center gap-1 rounded-2xl motion-reduce:transition-none motion-reduce:active:scale-100 active:opacity-80 transition-opacity duration-150"
                 style={{
-                  color: isActive ? ACCENT : '#64748B',
+                  color: isActive ? '#046348' : '#46594f',
                   minHeight: 56,
                 }}
                 aria-current={isActive ? 'page' : undefined}
@@ -113,7 +104,7 @@ export default function MobileBottomNav({ currentPath, onNavigate }: MobileBotto
             );
           })}
         </div>
-      </div>
+      </GlassSurface>
     </nav>
   );
 }

@@ -1,157 +1,145 @@
-import { Clock, Calendar, Star, Mail, HelpCircle } from 'lucide-react';
-import InfoOverlayShell from './InfoOverlayShell';
+import TelAvivEditorialFrame from './editorial/TelAvivEditorialFrame';
+import { TEAM_EMAIL } from '../lib/team';
+import { navigateTo } from '../lib/navigation';
 
 interface AboutPageProps {
   onClose: () => void;
 }
 
+const PRINCIPLES = [
+  {
+    n: '01',
+    title: 'Inquiry first',
+    body: 'Guests send a request. Hosts reply. There is no instant checkout and no surprise platform fee on the guest side.',
+  },
+  {
+    n: '02',
+    title: 'Zero guest commission',
+    body: 'The nightly rate you see is the host’s rate. XpressBnB is paid by hosts as software — not by taking a cut of your stay.',
+  },
+  {
+    n: '03',
+    title: 'Cities we actually cover',
+    body: 'Delhi NCR and Rishikesh. Private, couple-friendly short stays with ops review on every inquiry.',
+  },
+];
+
+const FAQS = [
+  {
+    q: 'Do I book and pay on the site?',
+    a: 'No. You send an inquiry with dates and contact details. The host (or our line after review) responds. Payment is agreed after the stay is accepted — not as a guest checkout cart.',
+  },
+  {
+    q: 'Is there a guest service fee?',
+    a: 'No guest commission. Hosts pay for the SaaS listing. The price on the property is the host’s nightly rate.',
+  },
+  {
+    q: 'Which cities do you list?',
+    a: 'Delhi, Gurgaon, Noida, Greater Noida, Ghaziabad, and Rishikesh. We do not invent inventory outside those markets.',
+  },
+  {
+    q: 'Are listings verified?',
+    a: 'Premium listing badges mean the host has an active paid plan. Ops reviews inquiries. Always read house rules on the property page.',
+  },
+  {
+    q: 'Can I install XpressBnB like an app?',
+    a: 'Yes. Android Chrome → Install app. iPhone Safari → Share → Add to Home Screen. Laptop: the install icon in the address bar.',
+  },
+  {
+    q: 'How do I reach support?',
+    a: `Email ${TEAM_EMAIL}. We reply on inquiries and listing questions — we do not publish host phones on the public listing.`,
+  },
+];
+
 export default function AboutPage({ onClose }: AboutPageProps) {
-  const faqs = [
-    {
-      question: 'What is the difference between Full Day and Half Day booking?',
-      answer:
-        'Full Day booking gives you 24-hour access to the property, while Half Day booking provides 12-hour access with two time slots: Morning (11 AM - 6:30 PM) or Evening (7:30 PM - 10 AM next day).',
-    },
-    {
-      question: 'Can I check in early or check out late?',
-      answer:
-        'Check-in and check-out times are fixed as per your booking type. For special requests, please contact the property owner or our support team before your booking.',
-    },
-    {
-      question: 'How do I make a booking?',
-      answer:
-        'Browse available properties, select your preferred one, choose your booking type (Full Day or Half Day), select your dates, and complete the booking form with your details.',
-    },
-    {
-      question: 'Is there a cancellation policy?',
-      answer:
-        "Cancellation policies vary by property. Please review the specific property's cancellation terms before confirming your booking.",
-    },
-    {
-      question: 'How do I contact customer support?',
-      answer:
-        'You can email us at support@xpressbnb.com and our team will respond to your inquiry as soon as possible.',
-    },
-    {
-      question: 'Can I add XpressBnB to my phone or laptop like an app?',
-      answer:
-        'Yes. Android: Chrome → menu (⋮) → Install app. iPhone: Safari → Share → Add to Home Screen. Laptop: Chrome or Edge → install icon in the address bar. Look for the Install banner on the site for step-by-step help.',
-    },
-    {
-      question: 'Are the properties verified?',
-      answer:
-        'Yes, all properties listed on XpressBnB are verified by our team to ensure quality and safety standards.',
-    },
-  ];
-
   return (
-    <InfoOverlayShell title="About XpressBnB" subtitle="Your flexible stay partner" onClose={onClose}>
-      <div className="space-y-8">
-        <section className="space-y-4">
-          <h3 className="text-2xl font-bold text-xpx-text">Welcome to XpressBnB</h3>
-          <p className="text-xpx-muted leading-relaxed">
-            XpressBnB is your trusted platform for flexible short-term property rentals. We understand that
-            modern travelers and professionals need accommodation that fits their schedule, not the other way
-            around. That&apos;s why we offer verified stays across Delhi NCR, Gurgaon, Noida, and Rishikesh.
-          </p>
-        </section>
-
-        <section className="space-y-6">
-          <h3 className="text-2xl font-bold text-xpx-text flex items-center gap-2">
-            <Clock className="w-6 h-6 text-emerald-600" />
-            How Our Booking System Works
-          </h3>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="rounded-2xl p-6 border border-emerald-200 bg-emerald-50/80">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 bg-emerald-600 rounded-xl flex items-center justify-center">
-                  <Calendar className="w-6 h-6 text-white" />
-                </div>
-                <h4 className="text-xl font-bold text-xpx-text">Full Day Booking</h4>
-              </div>
-              <ul className="space-y-3 text-xpx-muted text-sm">
-                <li className="flex items-start gap-2">
-                  <Star className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                  <span>
-                    <strong className="text-xpx-text">Duration:</strong> 24 hours of access
-                  </span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Star className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                  <span>
-                    <strong className="text-xpx-text">Perfect for:</strong> Overnight stays and extended visits
-                  </span>
-                </li>
-              </ul>
-            </div>
-
-            <div className="rounded-2xl p-6 border border-emerald-200 bg-emerald-50/50">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 bg-emerald-700 rounded-xl flex items-center justify-center">
-                  <Clock className="w-6 h-6 text-white" />
-                </div>
-                <h4 className="text-xl font-bold text-xpx-text">Half Day Booking</h4>
-              </div>
-              <ul className="space-y-3 text-xpx-muted text-sm">
-                <li className="flex items-start gap-2">
-                  <Star className="w-5 h-5 text-emerald-700 shrink-0 mt-0.5" />
-                  <span>
-                    <strong className="text-xpx-text">Duration:</strong> 12 hours of access
-                  </span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Star className="w-5 h-5 text-emerald-700 shrink-0 mt-0.5" />
-                  <span>
-                    <strong className="text-xpx-text">Perfect for:</strong> Day meetings and short stays
-                  </span>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </section>
-
-        <section className="space-y-6">
-          <h3 className="text-2xl font-bold text-xpx-text flex items-center gap-2">
-            <HelpCircle className="w-6 h-6 text-emerald-600" />
-            Frequently Asked Questions
-          </h3>
-          <div className="space-y-4">
-            {faqs.map((faq, index) => (
-              <details
-                key={index}
-                className="group rounded-2xl p-6 bg-slate-50 hover:bg-slate-100/80 transition-colors cursor-pointer border border-xpx-border"
-              >
-                <summary className="font-semibold text-xpx-text flex items-start gap-3 list-none">
-                  <HelpCircle className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                  <span className="flex-1">{faq.question}</span>
-                </summary>
-                <p className="mt-4 text-xpx-muted pl-8 leading-relaxed">{faq.answer}</p>
-              </details>
-            ))}
-          </div>
-        </section>
-
-        <section className="rounded-2xl p-6 border border-xpx-border bg-slate-50">
-          <h3 className="text-xl font-bold text-xpx-text mb-4">Need More Help?</h3>
-          <p className="text-xpx-muted mb-6">
-            Our customer support team is here to assist you. Email us for any inquiries.
-          </p>
-          <a href="mailto:support@xpressbnb.com" className="xpx-btn-primary w-full flex">
-            <Mail className="w-5 h-5" />
-            Email Us
-          </a>
-          <p className="text-sm text-xpx-muted mt-4 text-center">
-            Email: <strong className="text-xpx-text">support@xpressbnb.com</strong>
-          </p>
-        </section>
-
-        <div className="pt-6 border-t border-xpx-border">
-          <button type="button" onClick={onClose} className="xpx-btn-primary w-full">
-            Back to home
-          </button>
+    <TelAvivEditorialFrame kicker="About" onClose={onClose}>
+      <section>
+        <div
+          className="relative h-[42vh] min-h-[260px] sm:h-[52vh] sm:min-h-[360px]"
+          style={{ background: '#8a8074' }}
+        >
+          <img
+            src="/images/editorial/about-hero.png?v=2"
+            alt="Tel Aviv White City façade"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
         </div>
-      </div>
-    </InfoOverlayShell>
+        <div className="xpx-container py-10 sm:py-14" style={{ background: '#FAFAF8' }}>
+          <p className="text-[11px] font-semibold tracking-[0.28em] uppercase text-emerald-800">About</p>
+          <h1 className="mt-3 max-w-3xl text-[2.25rem] sm:text-5xl lg:text-[3.5rem] font-semibold tracking-tight leading-[1.1] text-xpx-text">
+            Built for how people actually stay.
+          </h1>
+          <p className="mt-4 max-w-xl text-sm sm:text-base text-xpx-muted leading-relaxed">
+            White-city calm. Marketplace honesty. Inquiry, then a human reply.
+          </p>
+        </div>
+      </section>
+
+      <section className="xpx-container py-16 sm:py-20">
+        <div className="grid gap-10 md:grid-cols-3 md:gap-12">
+          {PRINCIPLES.map((item) => (
+            <article key={item.n} className="border-t border-black/10 pt-6">
+              <p className="text-[11px] font-semibold tracking-[0.2em] text-emerald-700">{item.n}</p>
+              <h2 className="mt-3 text-xl sm:text-2xl font-semibold tracking-tight">{item.title}</h2>
+              <p className="mt-3 text-sm sm:text-[15px] leading-relaxed text-xpx-muted">{item.body}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="xpx-container pb-16 sm:pb-24">
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-center">
+          <div className="max-w-xl">
+            <p className="text-[11px] font-semibold tracking-[0.22em] uppercase text-xpx-subtle">
+              The house
+            </p>
+            <h2 className="mt-3 text-3xl sm:text-4xl font-semibold tracking-tight leading-tight">
+              A short-stay desk for Delhi NCR and the Ganges foothills.
+            </h2>
+            <p className="mt-5 text-[15px] leading-relaxed text-xpx-muted">
+              XpressBnB is an inquiry-first marketplace. Guests browse real homes, pick dates, and send a
+              request. Hosts run the listing. We review the queue. No invented amenities, no guest
+              checkout tax, no hotel-lobby chrome.
+            </p>
+            <button
+              type="button"
+              onClick={() => navigateTo('/explore')}
+              className="mt-8 inline-flex min-h-12 items-center rounded-full px-6 text-sm font-semibold text-white"
+              style={{ background: '#059669' }}
+            >
+              Explore stays
+            </button>
+          </div>
+          <div className="overflow-hidden rounded-sm aspect-[4/5] sm:aspect-[5/4] lg:aspect-[4/5]">
+            <img
+              src="/images/editorial/about-hero.png?v=2"
+              alt="White City architecture — reference for XpressBnB editorial"
+              className="h-full w-full object-cover object-right"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="xpx-container pb-20">
+        <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight">Questions, answered simply</h2>
+        <div className="mt-8 divide-y divide-black/10 border-y border-black/10">
+          {FAQS.map((faq) => (
+            <details key={faq.q} className="group py-5">
+              <summary className="cursor-pointer list-none font-semibold text-[15px] sm:text-base">
+                {faq.q}
+              </summary>
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-xpx-muted">{faq.a}</p>
+            </details>
+          ))}
+        </div>
+        <p className="mt-8 text-sm text-xpx-muted">
+          More help:{' '}
+          <a href={`mailto:${TEAM_EMAIL}`} className="font-semibold text-emerald-800 underline-offset-4 hover:underline">
+            {TEAM_EMAIL}
+          </a>
+        </p>
+      </section>
+    </TelAvivEditorialFrame>
   );
 }

@@ -1494,6 +1494,10 @@ export type Database = {
         Args: { p_booking_id: string }
         Returns: undefined
       }
+      get_public_property_brand: {
+        Args: { p_property_id: string }
+        Returns: { brand_name: string; brand_description: string | null }[]
+      }
       replace_host_brand_properties: {
         Args: { p_brand_id: string; p_property_ids?: string[] }
         Returns: string[]
