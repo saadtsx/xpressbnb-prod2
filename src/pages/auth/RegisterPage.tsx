@@ -1,9 +1,18 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Mail, Lock, User, Phone, AlertCircle, ArrowRight } from 'lucide-react';
-import AuthShell from './AuthShell';
+import AuthShell, { type AuthVisual } from './AuthShell';
 import { theme } from '../../lib/theme';
 import HostValueProp from '../../components/host/HostValueProp';
+
+const REGISTER_VISUAL: AuthVisual = {
+  image: '/images/homepage/city-moods/rishikesh-960.webp',
+  imageAlt: '',
+  kicker: 'For hosts',
+  headline: 'List it. Own it. Keep it.',
+  caption: 'Zero platform commission — guests pay you directly, every single time.',
+  trustLines: ['Free to list your first stay', 'You set the price, you keep it'],
+};
 
 interface RegisterPageProps {
   onNavigate: (page: 'login') => void;
@@ -60,6 +69,7 @@ export default function RegisterPage({ onNavigate }: RegisterPageProps) {
       eyebrow="Become a host"
       title="0% commission — guests pay you directly"
       subtitle="List your first property free. Upgrade later for calendar sync and a verified badge."
+      visual={REGISTER_VISUAL}
       footer={
         <>
           Already have an account?{' '}

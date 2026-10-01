@@ -1,8 +1,17 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Mail, Lock, AlertCircle, Eye, EyeOff, ArrowRight, Shield, CheckCircle2 } from 'lucide-react';
-import AuthShell from './AuthShell';
+import { Mail, Lock, AlertCircle, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import AuthShell, { type AuthVisual } from './AuthShell';
 import { theme } from '../../lib/theme';
+
+const LOGIN_VISUAL: AuthVisual = {
+  image: '/images/homepage/warm/hero-warm-1280.webp',
+  imageAlt: '',
+  kicker: 'Welcome back',
+  headline: 'Good to see you again.',
+  caption: 'Pick up right where you left off — your bookings, your listings, your people.',
+  trustLines: ['0% commission, always', 'A direct line to your host'],
+};
 
 interface LoginPageProps {
   onNavigate: (page: 'register' | 'forgot') => void;
@@ -43,6 +52,7 @@ export default function LoginPage({ onNavigate }: LoginPageProps) {
       eyebrow="Welcome back"
       title="Sign in to your hosting"
       subtitle="Pick up where you left off — manage properties, track bookings, run promotions."
+      visual={LOGIN_VISUAL}
       footer={
         <>
           New here?{' '}
@@ -175,17 +185,6 @@ export default function LoginPage({ onNavigate }: LoginPageProps) {
         </svg>
         {googleLoading ? 'Connecting…' : 'Sign in with Google'}
       </button>
-
-      <div className="mt-6 pt-6 xpx-divider flex items-center justify-center gap-6 text-xs text-xpx-subtle">
-        <span className="flex items-center gap-1.5">
-          <CheckCircle2 className="w-4 h-4" style={{ color: '#3dae68' }} />
-          Secure login
-        </span>
-        <span className="flex items-center gap-1.5">
-          <Shield className="w-4 h-4" style={{ color: theme.accent }} />
-          Data protected
-        </span>
-      </div>
     </AuthShell>
   );
 }
