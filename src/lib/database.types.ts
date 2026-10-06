@@ -375,6 +375,38 @@ export type Database = {
         }
         Relationships: []
       }
+      property_reports: {
+        Row: {
+          created_at: string
+          details: string | null
+          device_fingerprint: string | null
+          id: string
+          property_id: string
+          reason: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          details?: string | null
+          device_fingerprint?: string | null
+          id?: string
+          property_id: string
+          reason: string
+          status?: string
+        }
+        Update: {
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_reports_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       host_brand_properties: {
         Row: {
           brand_id: string
@@ -1497,6 +1529,15 @@ export type Database = {
       get_public_property_brand: {
         Args: { p_property_id: string }
         Returns: { brand_name: string; brand_description: string | null }[]
+      }
+      report_property: {
+        Args: {
+          p_property_id: string
+          p_reason: string
+          p_details?: string | null
+          p_device_fingerprint?: string | null
+        }
+        Returns: Json
       }
       replace_host_brand_properties: {
         Args: { p_brand_id: string; p_property_ids?: string[] }

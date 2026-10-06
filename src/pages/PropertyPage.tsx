@@ -1021,6 +1021,7 @@ export default function PropertyPage() {
                 <HostCard
                   hostId={property.host_id}
                   fallbackCity={property.city}
+                  propertyId={property.id}
                   propertyTitle={property.title}
                   onRequestToBook={handlePrimaryBookingCta}
                 />

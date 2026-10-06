@@ -21,6 +21,7 @@ import {
   type OpsInquiryRow,
   type OpsSnapshot,
 } from '../../lib/opsConsole';
+import OpsLiveReports from './OpsLiveReports';
 
 type OpsConsolePageProps = {
   onNavigate: (path: string) => void;
@@ -347,6 +348,10 @@ export default function OpsConsolePage({ onNavigate }: OpsConsolePageProps) {
                 </div>
               </section>
             ) : null}
+
+            <OpsLiveReports
+              titleById={Object.fromEntries((snapshot?.properties ?? []).map((p) => [p.id, p.title]))}
+            />
 
             {/* E. Stuck Lead Alert */}
             <section>

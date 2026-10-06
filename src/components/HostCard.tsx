@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { CheckCircle, MapPin, Shield, Headphones } from 'lucide-react';
+import { CheckCircle, MapPin, Shield, Flag } from 'lucide-react';
 import { fetchPublicHost } from '../lib/hostPublicCache';
 import { theme } from '../lib/theme';
 import { guestHostDisplayName, safeHostInitial, stripPhoneLike } from '../lib/host';
 import { TRUST_BADGE_COPY } from '../lib/trustBadgeCopy';
-import { buildTeamWhatsAppLink } from '../lib/team';
 import { scrollToId } from '../lib/smoothScroll';
 import { inquiryCtaLabel } from '../lib/inquiryCopy';
+import ReportPropertySheet from './property/ReportPropertySheet';
 
 interface HostInfo {
   id: string;
@@ -23,6 +23,7 @@ interface HostCardProps {
   /** City of the property; used as a fallback when host has no city of its own. */
   fallbackCity?: string;
   className?: string;
+  propertyId?: string;
   propertyTitle?: string;
   /** Opens the booking inquiry flow (quality review before host contact). */
   onRequestToBook?: () => void;
@@ -37,11 +38,13 @@ export default function HostCard({
   hostId,
   fallbackCity,
   className = '',
+  propertyId,
   propertyTitle = 'this property',
   onRequestToBook,
 }: HostCardProps) {
   const [host, setHost] = useState<HostInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [reportOpen, setReportOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -73,16 +76,6 @@ export default function HostCard({
       return;
     }
     scrollToId('booking-sidebar', { offset: -80, duration: 1.05 });
-  };
-
-  const handleConcierge = () => {
-    window.open(
-      buildTeamWhatsAppLink(
-        `Hi — I have a question about "${propertyTitle}" on XpressBNB before I send an inquiry.`,
-      ),
-      '_blank',
-      'noopener,noreferrer',
-    );
   };
 
   if (loading) {
@@ -207,23 +200,34 @@ export default function HostCard({
         >
           {inquiryCtaLabel('host_card')}
         </button>
-        <button
-          type="button"
-          onClick={handleConcierge}
-          className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm text-xpx-text transition-colors"
-          style={{
-            background: 'var(--xpx-surface)',
-            border: '1px solid var(--xpx-border-strong)',
-            minHeight: 48,
-          }}
-        >
-          <Headphones className="w-4 h-4" />
-          {inquiryCtaLabel('host_concierge')}
-        </button>
+        {propertyId && (
+          <button
+            type="button"
+            onClick={() => setReportOpen(true)}
+            className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold text-sm transition-colors hover:bg-red-50"
+            style={{
+              background: 'var(--xpx-surface)',
+              border: '1px solid #DC2626',
+              color: '#DC2626',
+              minHeight: 48,
+            }}
+          >
+            <Flag className="w-4 h-4" aria-hidden="true" />
+            Report this property
+          </button>
+        )}
         <p className="text-[11px] text-xpx-muted text-center leading-snug pt-0.5">
           Book first — we&apos;ll connect you with the host after your request goes through.
         </p>
       </div>
+      {propertyId && (
+        <ReportPropertySheet
+          open={reportOpen}
+          propertyId={propertyId}
+          propertyTitle={propertyTitle}
+          onClose={() => setReportOpen(false)}
+        />
+      )}
     </section>
   );
 }
