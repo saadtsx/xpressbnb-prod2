@@ -30,6 +30,21 @@ export const PROPERTY_GALLERY_THUMB_WIDTHS = [240, 320, 480, 640] as const;
 export const PROPERTY_GALLERY_THUMB_SIZES =
   '(min-width: 1280px) 320px, (min-width: 640px) 30vw, 0px';
 
+/**
+ * Supabase Image Transformations (/render/image) is a paid-plan feature. When it is not
+ * enabled for the project every transformed URL returns 403 FeatureNotEnabled and images
+ * vanish, so we serve the original object URL unless explicitly opted in.
+ * Set VITE_SUPABASE_IMAGE_TRANSFORMS=true once the plan supports it.
+ */
+const SUPABASE_TRANSFORMS_ENABLED = import.meta.env.VITE_SUPABASE_IMAGE_TRANSFORMS === 'true';
+
+function canResizeUrl(url: string): boolean {
+  return (
+    (SUPABASE_TRANSFORMS_ENABLED && url.includes('/storage/v1/object/public/')) ||
+    url.includes('images.pexels.com')
+  );
+}
+
 const CARD_IMAGE_QUALITY = 80;
 const HERO_IMAGE_QUALITY = 82;
 const GALLERY_THUMB_QUALITY = 80;
@@ -61,7 +76,7 @@ function withPexelsWidth(url: string, width: number): string {
 }
 
 function toSupabaseRenderUrl(url: string, width: number, quality = CARD_IMAGE_QUALITY): string {
-  if (!url.includes('/storage/v1/object/public/')) return url;
+  if (!SUPABASE_TRANSFORMS_ENABLED || !url.includes('/storage/v1/object/public/')) return url;
   const renderUrl = url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/');
   try {
     const parsed = new URL(renderUrl);
@@ -92,9 +107,7 @@ export function propertyCardImageSrcSet(url: string): string | undefined {
   const trimmed = url.trim();
   if (!trimmed) return undefined;
 
-  const canResize =
-    trimmed.includes('/storage/v1/object/public/') || trimmed.includes('images.pexels.com');
-  if (!canResize) return undefined;
+  if (!canResizeUrl(trimmed)) return undefined;
 
   return PROPERTY_CARD_IMAGE_WIDTHS.map((w) => `${propertyCardImageUrl(trimmed, w)} ${w}w`).join(', ');
 }
@@ -129,9 +142,7 @@ export function propertyHeroImageSrcSet(url: string): string | undefined {
   const trimmed = url.trim();
   if (!trimmed) return undefined;
 
-  const canResize =
-    trimmed.includes('/storage/v1/object/public/') || trimmed.includes('images.pexels.com');
-  if (!canResize) return undefined;
+  if (!canResizeUrl(trimmed)) return undefined;
 
   return PROPERTY_HERO_IMAGE_WIDTHS.map(
     (w) => `${buildResizedImageUrl(trimmed, w, HERO_IMAGE_QUALITY)} ${w}w`,
@@ -154,9 +165,7 @@ export function propertyGalleryThumbSrcSet(url: string): string | undefined {
   const trimmed = url.trim();
   if (!trimmed) return undefined;
 
-  const canResize =
-    trimmed.includes('/storage/v1/object/public/') || trimmed.includes('images.pexels.com');
-  if (!canResize) return undefined;
+  if (!canResizeUrl(trimmed)) return undefined;
 
   return PROPERTY_GALLERY_THUMB_WIDTHS.map(
     (w) => `${propertyGalleryThumbUrl(trimmed, w)} ${w}w`,
@@ -178,9 +187,7 @@ export function propertyLightboxImageSrcSet(url: string): string | undefined {
   const trimmed = url.trim();
   if (!trimmed) return undefined;
 
-  const canResize =
-    trimmed.includes('/storage/v1/object/public/') || trimmed.includes('images.pexels.com');
-  if (!canResize) return undefined;
+  if (!canResizeUrl(trimmed)) return undefined;
 
   return PROPERTY_LIGHTBOX_IMAGE_WIDTHS.map(
     (w) => `${propertyLightboxImageUrl(trimmed, w)} ${w}w`,
