@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { resolveGuestTrustStages } from './guestTrustJourney';
 
 describe('guestTrustJourney', () => {
+  it('never treats locally editable completion or loyalty history as verified stays', () => {
+    const stages = resolveGuestTrustStages({ inquiries: [{ customerReference: 'XPX-OLD', submittedAt: 1, lastDisplayStatus: 'completed' }], frequentAmigo: { qualifyingCount: 20, threshold: 3, unlocked: true, windowDays: 15 } });
+    for (const id of ['first_stay','verified_traveller','repeat_stays','preferred_guest']) expect(stages.find(s => s.id === id)?.reached).toBe(false);
+  });
   it('marks visit as always reached', () => {
     const stages = resolveGuestTrustStages({
       inquiries: [],

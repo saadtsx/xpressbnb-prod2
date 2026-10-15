@@ -4,7 +4,6 @@
  */
 
 import { normalizeCityBucket } from './cityBuckets';
-import { computeXpressbnbStayScore } from './xpressbnbStayScore';
 import { haversineKm } from './nearbyInventory';
 import { isMappableProperty } from './propertyCoords';
 import type { PublicPropertyListing } from './publicListings';
@@ -32,13 +31,9 @@ function normalizeDistanceScore(km: number, maxKm: number): number {
 }
 
 function qualityScoreFor(property: PublicPropertyListing): number {
-  const stay = computeXpressbnbStayScore(property);
-  const normalized = (stay.score - 4.2) / (4.8 - 4.2);
-  let score = Math.min(1, Math.max(0, normalized));
-  if (property.is_verified) score = Math.min(1, score + 0.08);
-  if (property.is_premium) score = Math.min(1, score + 0.05);
-  if (property.instant_booking) score = Math.min(1, score + 0.04);
-  return score;
+  // Listing completeness is a discovery factor, not reputation or paid verification.
+  const photos = Array.isArray(property.images) ? property.images.filter(x => typeof x === 'string' && x.trim()).length : 0;
+  return Math.min(photos, 8) / 8;
 }
 
 /** Proxy popularity until view_events aggregation is wired. */

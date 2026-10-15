@@ -1,5 +1,5 @@
 /**
- * Single source of truth for guest-facing stay pricing on XpressBnB.
+ * Client-side estimate for guest-facing stay pricing on XpressBnB.
  *
  * Inquiry-first marketplace: no platform / service / convenience fees.
  * Mandatory charges only when backed by product data (property offer, guest-selected add-ons).
@@ -56,7 +56,7 @@ function emptyQuote(numGuests = 1): GuestPricingQuote {
 }
 
 export function formatInr(amount: number): string {
-  return `₹${Math.max(0, Math.round(amount)).toLocaleString('en-IN')}`;
+  return `₹${Math.max(0, amount).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 }
 
 /** Amount sent to create_pending_booking — allows 0 after discounts when stay subtotal exists. */
@@ -67,7 +67,7 @@ export function getInquirySubmitAmount(quote: GuestPricingQuote): number {
 }
 
 /**
- * Authoritative guest quote for discovery → inquiry → success → tracking.
+ * Indicative guest quote for discovery → inquiry → success → tracking.
  * Never adds platform, service, convenience, or guest commission fees.
  */
 export function buildGuestPricingQuote(input: BuildGuestPricingQuoteInput): GuestPricingQuote {

@@ -99,7 +99,7 @@ export default function StayScoreEducationTooltip() {
         >
           <Sparkles className="w-4 h-4 shrink-0 mt-0.5" style={{ color: 'var(--xpx-trust)' }} />
           <span className="text-sm font-semibold text-xpx-text leading-snug">
-            New: see how XpressBNB assesses each stay
+            Learn what listing facts can tell you
           </span>
         </button>
         <button

@@ -39,9 +39,9 @@ export function hostNewInquiryMessage(ctx: InquiryMessageContext, locale?: strin
 export function guestInquiryAcceptedMessage(ctx: InquiryMessageContext, locale?: string | null): string {
   const loc = pickLocale(locale);
   if (loc === 'hi') {
-    return `Host ne aapki inquiry "${ctx.propertyTitle}" (${ctx.dateRange}) accept kar li. Host jald sampark karenge.`;
+    return `Host ne aapki inquiry "${ctx.propertyTitle}" (${ctx.dateRange}) accept kar li. Booking abhi confirm nahi hai. Payment se pehle poori keemat aur shartein host se tay karein.`;
   }
-  return `Your inquiry for ${ctx.propertyTitle} ${ctx.dateRange} was accepted by ${ctx.hostName}. The host may contact you soon.`;
+  return `Your inquiry for ${ctx.propertyTitle} ${ctx.dateRange} was accepted by ${ctx.hostName}. This is not a booking confirmation. Agree the full price, policies and payment terms with the host before paying.`;
 }
 
 export function guestInquiryRejectedMessage(ctx: InquiryMessageContext, locale?: string | null): string {

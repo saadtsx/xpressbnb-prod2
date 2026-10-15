@@ -11,7 +11,7 @@ type GuestPricingBreakdownProps = {
   lines: GuestPricingLine[];
   guestTotal: number;
   className?: string;
-  /** Stripe-style sidebar — nightly × nights, ₹0 platform fee, subtotal row */
+  /** Stripe-style sidebar — nightly × nights, Platform fees, subtotal row */
   variant?: 'default' | 'stripe';
   nights?: number;
   averageNightlyInr?: number;
@@ -76,7 +76,7 @@ export default function GuestPricingBreakdown({
         {variant === 'stripe' && (
           <div className="flex justify-between gap-3 items-center">
             <dt className="inline-flex items-center gap-1 text-emerald-700 font-semibold">
-              ₹0 platform fee
+              Platform fees
               <span
                 className="inline-flex"
                 title={GUEST_PRICING_TRANSPARENT}
@@ -85,7 +85,7 @@ export default function GuestPricingBreakdown({
                 <span className="sr-only">{GUEST_PRICING_TRANSPARENT}</span>
               </span>
             </dt>
-            <dd className="font-bold tabular-nums shrink-0 text-emerald-700">₹0</dd>
+            <dd className="font-bold tabular-nums shrink-0 text-emerald-700">Confirm with host</dd>
           </div>
         )}
 
@@ -105,7 +105,7 @@ export default function GuestPricingBreakdown({
           style={{ borderTop: '1px solid var(--xpx-border)' }}
         >
           <dt className="text-xpx-text font-bold">
-            {variant === 'stripe' ? 'Total (INR)' : 'Total'}
+            {variant === 'stripe' ? 'Estimate (INR)' : 'Estimate'}
           </dt>
           <dd className="text-xpx-text font-extrabold tabular-nums">{formatInr(guestTotal)}</dd>
         </div>
@@ -121,7 +121,7 @@ export default function GuestPricingBreakdown({
         >
           <Tag className="w-4 h-4 shrink-0 mt-0.5 text-emerald-700" aria-hidden />
           <p className="text-xs text-emerald-900 leading-snug font-medium">
-            {GUEST_PRICING_NO_COMMISSION} {GUEST_PRICING_TRANSPARENT} More value, always.
+            {GUEST_PRICING_INQUIRY_TOTAL_NOTE}
           </p>
         </div>
       ) : (

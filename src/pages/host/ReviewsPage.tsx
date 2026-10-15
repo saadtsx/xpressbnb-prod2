@@ -95,9 +95,10 @@ export default function ReviewsPage() {
       <div>
         <p className="xpx-eyebrow">Trust</p>
         <h1 className="text-2xl sm:text-3xl font-extrabold text-xpx-text tracking-tight mt-1">Reviews</h1>
-        <p className="text-xpx-muted mt-2">Guest feedback and ratings</p>
+        <p className="text-xpx-muted mt-2">Imported review records — not verified XpressBNB stays</p>
       </div>
 
+      <p className="rounded-xl border p-4 text-sm text-xpx-muted">Verified-stay reviews are not available: this inquiry workflow does not verify arrival, checkout or settled payments. Imported reviews do not establish completed stays. Report inaccurate records or request moderation at <a className="underline" href="mailto:support@xpressbnb.com">support@xpressbnb.com</a>.</p>
       {stats.totalReviews > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div

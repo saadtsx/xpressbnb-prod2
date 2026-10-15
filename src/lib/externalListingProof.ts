@@ -40,15 +40,6 @@ function readPositiveNumber(obj: Record<string, unknown>, keys: string[]): numbe
   return null;
 }
 
-function readBoolean(obj: Record<string, unknown>, keys: string[]): boolean {
-  for (const key of keys) {
-    const v = obj[key];
-    if (v === true) return true;
-    if (v === 'true' || v === 1) return true;
-  }
-  return false;
-}
-
 function isSafeHttpUrl(raw: string): boolean {
   try {
     const u = new URL(raw);
@@ -76,13 +67,8 @@ function parseOneEntry(raw: unknown): ParsedExternalListing | null {
 
   if (!url || !isSafeHttpUrl(url) || listedPrice == null) return null;
 
-  const opsVerified = readBoolean(obj, [
-    'verified',
-    'verified_by_ops',
-    'ops_verified',
-    'xpressbnb_verified',
-    'checked_by_xpressbnb',
-  ]);
+  // This JSON is host-editable. Its flags cannot establish operations verification.
+  const opsVerified = false;
 
   const lastChecked = readString(obj, ['last_checked', 'lastChecked', 'checked_at']);
 

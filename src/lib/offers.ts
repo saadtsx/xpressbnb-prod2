@@ -30,11 +30,8 @@ export interface PromoCodeDef {
   minSubtotal?: number;
 }
 
-const STATIC_PROMO_CODES: PromoCodeDef[] = [
-  { code: 'WELCOME10', percent: 10, label: '10% off your first stay', minSubtotal: 1000 },
-  { code: 'WEEKEND15', percent: 15, label: '15% weekend special', minSubtotal: 2000 },
-  { code: 'XPRESS500', flat: 500, label: '₹500 instant off', minSubtotal: 2500 },
-];
+// No live promo entitlement service exists. Publish codes only after server validation.
+const STATIC_PROMO_CODES: PromoCodeDef[] = [];
 
 export function findPromoCode(input: string): PromoCodeDef | null {
   const code = input.trim().toUpperCase();

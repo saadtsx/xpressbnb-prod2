@@ -1,3 +1,4 @@
+import InquiryTermsSummary from './inquiry/InquiryTermsSummary';
 import { useCallback, useMemo, useRef, useState, useEffect } from 'react';
 import {
   Calendar,
@@ -859,7 +860,8 @@ export default function BookingForm({
       )}
 
       <div className="sticky bottom-0 z-10 -mx-1 px-1 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-[var(--xpx-surface)] via-[var(--xpx-surface)] to-transparent" id="booking-step-submit">
-        <button
+        <InquiryTermsSummary terms={{ accepts_local_ids: property.accepts_local_ids }} />
+            <button
           type="submit"
           disabled={loading || Boolean(submitGuardMessage)}
           aria-busy={loading}

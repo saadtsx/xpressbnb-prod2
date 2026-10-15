@@ -60,13 +60,13 @@ export const GUEST_TRUST_STAGES: GuestTrustStage[] = [
   },
   {
     id: 'trusted_guest',
-    label: 'Trusted guest',
+    label: 'Inquiry reviewed',
     description: 'An inquiry passed quality review — host contact was released.',
   },
   {
     id: 'first_stay',
     label: 'First completed stay',
-    description: 'A confirmed stay marked complete on XpressBnB.',
+    description: 'Unavailable until stay completion can be reliably verified.',
   },
   {
     id: 'verified_traveller',
@@ -81,7 +81,7 @@ export const GUEST_TRUST_STAGES: GuestTrustStage[] = [
   {
     id: 'preferred_guest',
     label: 'Preferred guest',
-    description: 'A strong pattern of completed stays or trusted repeat inquiries.',
+    description: 'Unavailable until a fair evidence and appeal policy exists.',
   },
 ];
 
@@ -98,9 +98,6 @@ export type GuestTrustStageState = GuestTrustStage & {
   current: boolean;
 };
 
-function countCompletedStays(inquiries: GuestInquiryRecord[]): number {
-  return inquiries.filter((row) => row.lastDisplayStatus === 'completed').length;
-}
 
 function hasTrustedInquiry(inquiries: GuestInquiryRecord[]): boolean {
   return inquiries.some(
@@ -121,7 +118,7 @@ export function buildGuestTrustContext(
   const engagement = getOnboardingEngagement();
   const inquiries = overrides.inquiries ?? store.inquiries;
   const inquiryCount = inquiries.length;
-  const completedStayCount = countCompletedStays(inquiries);
+  const completedStayCount = 0; // Browser history and legacy status do not prove a stay.
   const sorted = [...inquiries].sort((a, b) => b.submittedAt - a.submittedAt);
 
   return {
@@ -154,16 +151,10 @@ function isStageReached(id: GuestTrustStageId, ctx: ReturnType<typeof buildGuest
     case 'trusted_guest':
       return ctx.hasTrustedInquiry;
     case 'first_stay':
-      return ctx.completedStayCount >= 1;
     case 'verified_traveller':
-      return ctx.completedStayCount >= 1 && ctx.inquiryCount >= 2;
     case 'repeat_stays':
-      return ctx.completedStayCount >= 2;
     case 'preferred_guest':
-      return (
-        ctx.completedStayCount >= 3 ||
-        (ctx.frequentAmigo?.unlocked === true && ctx.inquiryCount >= 3)
-      );
+      return false;
     default:
       return false;
   }

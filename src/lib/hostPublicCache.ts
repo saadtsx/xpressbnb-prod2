@@ -60,7 +60,7 @@ export async function fetchPublicHost(hostId: string): Promise<PublicHostRow | n
 
   const run = async (): Promise<PublicHostRow | null> => {
     const { data, error } = await supabase
-      .from('hosts')
+      .from('public_host_profiles')
       .select(HOST_PUBLIC_SELECT)
       .eq('id', trimmed)
       .maybeSingle();
@@ -93,7 +93,7 @@ export function warmPublicHostCache(hostIds: (string | null | undefined)[]): voi
     for (let i = 0; i < missing.length; i += HOST_BATCH_SIZE) {
       const chunk = missing.slice(i, i + HOST_BATCH_SIZE);
       const { data, error } = await supabase
-        .from('hosts')
+        .from('public_host_profiles')
         .select(HOST_PUBLIC_SELECT)
         .in('id', chunk);
 

@@ -15,37 +15,16 @@ function mapTrackStatusToSteps(displayStatus: InquiryTrackStatus): TimelineStep[
     { id: 'viewed', label: 'Host reviewing' },
   ];
 
-  const activeIndex = (() => {
-    if (displayStatus === 'cancelled') return -1;
-    switch (displayStatus) {
-      case 'preparing':
-        return 1;
-      case 'sent_to_host':
-        return 2;
-      case 'viewed_by_host':
-      case 'host_responded':
-        return 3;
-      case 'completed':
-        return 3;
-      default:
-        return 1;
-    }
-  })();
-
-  return order.map((step, index) => ({
-    id: step.id,
-    label: displayStatus === 'cancelled' && index === order.length - 1
-      ? 'Inquiry closed'
-      : step.label,
-    state:
-      displayStatus === 'cancelled'
-        ? ('upcoming' as const)
-        : index < activeIndex
-          ? ('done' as const)
-          : index === activeIndex
-            ? ('active' as const)
-            : ('upcoming' as const),
-  }));
+  const responseLabels: Partial<Record<InquiryTrackStatus, string>> = {
+    review_declined: 'Closed during operations review',
+    accepted: 'Host accepted — final agreement pending', rejected: 'Host declined', countered: 'Counteroffer — guest agreement pending',
+    cancelled: 'Inquiry cancelled', legacy_unverified: 'Legacy status needs verification', host_responded: 'Host responded', completed: 'Completion needs verification',
+  };
+  if (displayStatus === 'review_declined') return [{ id: 'received', label: 'Inquiry received', state: 'done' }, { id: 'closed', label: 'Closed during operations review', state: 'active' }];
+  const response = responseLabels[displayStatus];
+  if (response) order.push({ id: 'response', label: response });
+  const activeIndex = response ? 4 : displayStatus === 'viewed_by_host' ? 3 : displayStatus === 'sent_to_host' ? 2 : 1;
+  return order.map((step, index) => ({ ...step, state: index < activeIndex ? 'done' : index === activeIndex ? 'active' : 'upcoming' }));
 }
 
 type InquiryStatusTimelineProps = {

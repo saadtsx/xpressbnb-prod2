@@ -15,14 +15,14 @@ export async function sendWhatsAppText(
   const phoneNumberId = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID');
   const devMode =
     Deno.env.get('WHATSAPP_DEV_MODE') === 'true' ||
-    Deno.env.get('WHATSAPP_DEV_MODE') === '1' ||
-    !token ||
-    !phoneNumberId;
+    Deno.env.get('WHATSAPP_DEV_MODE') === '1';
 
   if (devMode) {
-    console.info('[whatsapp:dev]', { to: toE164NoPlus, body });
+    // Never log recipient contact or message content, including in development.
     return { ok: true, messageId: `dev_${crypto.randomUUID()}`, mode: 'dev_logged' };
   }
+
+  if (!token || !phoneNumberId) return { ok: false, error: 'WhatsApp is not configured' };
 
   const url = `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`;
   const res = await fetch(url, {
@@ -50,23 +50,10 @@ export async function sendWhatsAppText(
 
   if (!res.ok) {
     const msg = json.error?.message ?? raw.slice(0, 500);
-    const templatePending =
-      json.error?.code === 132000 ||
-      /template/i.test(msg) ||
-      /not approved/i.test(msg);
-
-    if (templatePending) {
-      console.warn('[whatsapp:template-fallback]', { to: toE164NoPlus, body, error: msg });
-      return {
-        ok: true,
-        messageId: `dev_template_${crypto.randomUUID()}`,
-        mode: 'dev_logged',
-      };
-    }
-
     return { ok: false, error: msg };
   }
 
-  const messageId = json.messages?.[0]?.id ?? `wa_${Date.now()}`;
+  const messageId = json.messages?.[0]?.id;
+  if (!messageId) return { ok: false, error: 'Provider did not acknowledge the message' };
   return { ok: true, messageId, mode: 'api' };
 }

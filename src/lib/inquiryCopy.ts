@@ -14,7 +14,7 @@ export type InquiryCtaContext =
 
 /** Opening spread CTA — editorial arrival, not marketplace transaction. */
 export function openingArrivalCtaLabel(hasDates: boolean): string {
-  return hasDates ? 'Continue to reservation' : 'Begin your stay';
+  return hasDates ? 'Continue to inquiry' : 'Begin your stay';
 }
 
 export function inquiryCtaLabel(context: InquiryCtaContext): string {
@@ -24,19 +24,19 @@ export function inquiryCtaLabel(context: InquiryCtaContext): string {
     case 'property_with_dates':
       return 'Send inquiry';
     case 'host_card':
-      return 'Book now';
+      return 'Send inquiry';
     case 'host_concierge':
       return 'Text us on WhatsApp';
     case 'form_submit':
-      return 'Book now';
+      return 'Send inquiry';
     case 'offer_submit':
       return 'Send your offer';
     case 'modal_entry':
-      return 'Book now';
+      return 'Send inquiry';
     case 'artist_whatsapp':
       return 'Request via WhatsApp';
     default:
-      return 'Book now';
+      return 'Send inquiry';
   }
 }
 

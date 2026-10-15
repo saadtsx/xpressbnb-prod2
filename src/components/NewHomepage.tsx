@@ -10,7 +10,9 @@ import { prefetchStaysListingRouteChunk } from '../lib/listingRouteChunk';
 import { useNearbyLocationOptional } from '../contexts/NearbyLocationContext';
 import HomepageBelowFold from './HomepageBelowFold';
 import HomepageSearch from './homepage/HomepageSearch';
-import { buildHomepageSearchPath, isHomepageDate, localToday } from '../lib/homepageSearch';
+import { isHomepageDate } from '../lib/homepageSearch';
+import type { ExplorerRequest } from '../lib/locationExplorer';
+import LocationExplorer from './homepage/LocationExplorer';
 import './homepage/homepage.css';
 import GlassSurface from './glass/GlassSurface';
 
@@ -22,10 +24,18 @@ export default function NewHomepage() {
   const [stickySearch, setStickySearch] = useState(false);
   const nearby = useNearbyLocationOptional();
   const [city, setCity] = useState('Delhi');
+  const [explorer, setExplorer] = useState<ExplorerRequest | null>(null);
+  const locationRevealed = useRef(false);
   const [trip, setTrip] = useState(() => {
     const initial = parseTripFromSearch(window.location.search);
     return { checkin: isHomepageDate(initial.checkin || '') ? initial.checkin! : '', checkout: isHomepageDate(initial.checkout || '') ? initial.checkout! : '', guests: initial.guests || 2 };
   });
+
+  useEffect(() => {
+    if (locationRevealed.current || nearby?.permission !== 'granted' || !nearby.coords || nearby.isPromptOpen || ['locating', 'geocoding', 'unavailable'].includes(nearby.phase)) return;
+    locationRevealed.current = true;
+    setExplorer({ mode: 'nearby' });
+  }, [nearby?.permission, nearby?.coords, nearby?.isPromptOpen, nearby?.phase]);
 
   useEffect(() => {
     const node = heroSearch.current;
@@ -63,13 +73,14 @@ export default function NewHomepage() {
     });
   };
   const onCityClick = (name: string) => {
+    locationRevealed.current = true;
+    setCity(name);
     const slug = name.toLowerCase().replace(/\s+/g, '-');
     prefetchStaysListingRouteChunk(slug);
-    go(`/stays/${slug}`);
+    setExplorer({ mode: 'city', city: name });
   };
   const onSearch = () => {
-    prefetchStaysListingRouteChunk(city.toLowerCase().replace(/\s+/g, '-'));
-    go(buildHomepageSearchPath(city, trip, localToday()));
+    onCityClick(city);
   };
   const editSearch = () => {
     scrollTo('home-search');
@@ -136,7 +147,7 @@ export default function NewHomepage() {
               </figure>
             </div>
             <div ref={heroSearch} id="home-search" className="hp-search-anchor">
-              <HomepageSearch cities={HOMEPAGE_CITY_BUCKETS} city={city} onCityChange={setCity}
+              <HomepageSearch cities={HOMEPAGE_CITY_BUCKETS} city={city} onCityChange={onCityClick}
                 checkin={trip.checkin} checkout={trip.checkout} guests={trip.guests}
                 onCheckinChange={(value) => setTrip(previous => ({ ...previous, checkin: value, checkout: value && (!previous.checkout || previous.checkout <= value) ? addDaysIso(value, 1) : previous.checkout }))}
                 onCheckoutChange={(value) => setTrip(previous => ({ ...previous, checkout: value }))}
@@ -144,15 +155,23 @@ export default function NewHomepage() {
             </div>
             <div className="hp-discovery-links">
               <div><span className="hp-explore-label">Explore:</span>{['Delhi', 'Gurgaon', 'Noida', 'Rishikesh'].map(name => <button className={city === name ? 'hp-city-current' : undefined} key={name} onClick={() => onCityClick(name)}>{name}</button>)}</div>
-              <button className="hp-location-link" onClick={() => nearby ? nearby.requestLocation() : go('/explore')} disabled={nearby?.isLoading}>
+              <button className="hp-location-link" onClick={() => { if (!nearby) { go('/explore'); return; } locationRevealed.current = true; setExplorer({ mode: 'nearby' }); nearby.requestLocation(); }} disabled={nearby?.isLoading}>
                 <MapPin size={15} />{nearby?.isLoading ? 'Finding nearby stays…' : nearby?.permission === 'granted' ? 'Refresh my location' : 'Use my location'}
               </button>
             </div>
             {nearby?.errorReason && nearby.errorReason !== 'inventory_load_failed' && <p className="hp-location-note" role="status">We couldn’t find your location. You can choose a city above.</p>}
           </div>
         </section>
-        <HomepageBelowFold onCityClick={onCityClick} onNavigate={go} scrollTo={scrollTo} />
+        <HomepageBelowFold onCityClick={onCityClick} onNavigate={go} scrollTo={scrollTo} suppressNearbyScroll={Boolean(explorer)} />
       </main>
+      {explorer && <LocationExplorer request={explorer} trip={trip} onRequestChange={request => { locationRevealed.current = true; setExplorer(request); if (request.mode === 'city') setCity(request.city); }} onClose={() => setExplorer(null)} onEditDates={guests => {
+        setTrip(previous => ({ ...previous, guests }));
+        setExplorer(null);
+        requestAnimationFrame(() => {
+          scrollTo('home-search');
+          heroSearch.current?.querySelector<HTMLInputElement>('input[name="checkin"]')?.focus({ preventScroll: true });
+        });
+      }} />}
     </div>
   );
 }

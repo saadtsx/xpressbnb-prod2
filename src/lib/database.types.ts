@@ -1466,6 +1466,11 @@ export type Database = {
       }
     }
     Views: {
+      public_host_profiles: {
+        Row: { id: string; name: string; bio: string | null; kyc_status: string | null; total_bookings: number | null; created_at: string | null }
+        Relationships: []
+      }
+
       host_inquiries: {
         Row: Database['public']['Tables']['bookings']['Row'] & {
           contact_released: boolean | null
@@ -1475,6 +1480,11 @@ export type Database = {
       }
     }
     Functions: {
+      respond_to_inquiry: {
+        Args: { p_booking_id: string; p_action: string; p_expected_version: number; p_request_id: string; p_note?: string | null; p_counter_amount?: number | null }
+        Returns: Json
+      }
+
       attach_booking_razorpay_order: {
         Args: { p_booking_id: string; p_razorpay_order_id: string }
         Returns: undefined

@@ -11,7 +11,7 @@ import {
 import { closeStayScoreInfo, subscribeStayScoreInfoOpen } from '../lib/stayScoreEducation';
 
 const FACTORS = [
-  { icon: ShieldCheck, label: 'Verified listing details' },
+  { icon: ShieldCheck, label: 'Host-provided listing details' },
   { icon: Camera, label: 'Photos and property information' },
   { icon: Wifi, label: 'Amenities provided' },
   { icon: MapPin, label: 'Location and stay setup' },
@@ -112,17 +112,17 @@ export default function StayScoreInfoSheet() {
             }}
           >
             <Sparkles className="w-3.5 h-3.5" style={{ color: 'var(--xpx-trust)' }} aria-hidden />
-            XpressBNB Stay Score
+            XpressBNB trust facts
           </div>
 
           <h2 id={titleId} className="text-xl sm:text-2xl font-extrabold text-xpx-text tracking-tight pr-10">
-            What is XpressBNB Stay Score?
+            What is XpressBNB trust facts?
           </h2>
           <p className="mt-2 text-sm font-semibold text-xpx-muted">
-            A listing-quality signal, not a guest review rating.
+            A numerical Xpress Score is not available yet.
           </p>
           <p className="mt-3 text-sm text-xpx-muted leading-relaxed">
-            Stay Score is based on the details a host has provided for this stay.
+            Listing facts show what the host has supplied. Photos and amenities do not establish completed stays, identity, or safety.
           </p>
 
           <ul className="mt-5 space-y-2.5">
@@ -147,10 +147,10 @@ export default function StayScoreInfoSheet() {
           </ul>
 
           <p className="mt-5 text-sm font-semibold text-xpx-text">
-            It is not based on guest reviews or bookings.
+            Paid plans and unverified allegations do not improve or reduce a trust score.
           </p>
           <p className="mt-2 text-xs text-xpx-subtle leading-relaxed">
-            We update the score when listing details improve.
+            We need verified completed stays, review integrity and a published appeal process before introducing a score. Missing evidence does not mean fraud. Challenge inaccurate listing information at support@xpressbnb.com.
           </p>
         </div>
 

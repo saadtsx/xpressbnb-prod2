@@ -66,6 +66,5 @@ export function loadInquirySuccessSnapshot(
 
 export function inquirySuccessPath(snapshot: InquirySuccessSnapshot): string {
   const ref = encodeURIComponent(snapshot.customerReference.trim().toUpperCase());
-  const email = encodeURIComponent(snapshot.guestEmail.trim());
-  return `/guest/welcome/${ref}?email=${email}`;
+  return `/guest/welcome/${ref}`;
 }

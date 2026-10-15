@@ -83,6 +83,7 @@ Deno.serve(async (req) => {
     return json(req, { error: 'Invalid JSON body' }, 400);
   }
 
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return json(req, { error: 'Invalid request' }, 400);
   const ip = clientIp(req);
   const inquiryType: InquiryType = body.inquiry_type === 'make_offer' ? 'make_offer' : 'book_pay_later';
 
@@ -100,7 +101,7 @@ Deno.serve(async (req) => {
   const guestPhone = normalizePhone10(String(body.guest_phone ?? ''));
   const guestName = String(body.guest_name ?? '').trim();
 
-  if (!guestName) {
+  if (!guestName || guestName.length > 120) {
     return json(req, { error: 'Name is required' }, 400);
   }
   if (!isValidEmail(guestEmail)) {
@@ -109,20 +110,35 @@ Deno.serve(async (req) => {
   if (guestPhone.length !== 10) {
     return json(req, { error: 'Please enter a valid 10-digit mobile number' }, 400);
   }
-  if (!body.property_id || !body.host_id || !body.check_in || !body.check_out) {
+  if (!body.property_id || !body.check_in || !body.check_out) {
     return json(req, { error: 'Missing booking details' }, 400);
   }
 
   const admin = createClient(supabaseUrl, serviceKey);
+  const { data: property, error: propertyError } = await admin.from('properties')
+    .select('host_id, max_guests').eq('id', body.property_id).eq('is_active', true).maybeSingle();
+  if (propertyError || !property?.host_id) return json(req, { error: 'Property not available' }, 400);
+  if (!Number.isInteger(body.num_guests) || body.num_guests! < 1 || body.num_guests! > property.max_guests) {
+    return json(req, { error: 'Invalid guest count' }, 400);
+  }
+  if ((body.special_requests != null && (typeof body.special_requests !== 'string' || body.special_requests.length > 2000)) ||
+      (body.offer_message != null && (typeof body.offer_message !== 'string' || body.offer_message.length > 1000)) ||
+      (body.include_decoration != null && typeof body.include_decoration !== 'boolean')) {
+    return json(req, { error: 'Invalid inquiry details' }, 400);
+  }
+  if (inquiryType === 'make_offer' && (typeof body.offer_amount !== 'number' || !Number.isFinite(body.offer_amount) || body.offer_amount <= 0 || body.offer_amount > 1000000)) {
+    return json(req, { error: 'Invalid offer amount' }, 400);
+  }
 
   if (ip) {
     const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    const { count } = await admin
+    const { count, error: rateError } = await admin
       .from('inquiry_submission_log')
       .select('id', { count: 'exact', head: true })
       .eq('submission_ip', ip)
       .gte('created_at', since);
 
+    if (rateError) return json(req, { error: 'Please try again later' }, 503);
     if ((count ?? 0) >= IP_INQUIRIES_PER_HOUR) {
       return json(
         req,
@@ -134,7 +150,7 @@ Deno.serve(async (req) => {
 
   const common = {
     p_property_id: body.property_id,
-    p_host_id: body.host_id,
+    p_host_id: property.host_id,
     p_guest_name: guestName,
     p_guest_email: guestEmail.toLowerCase(),
     p_guest_phone: guestPhone,
@@ -163,9 +179,9 @@ Deno.serve(async (req) => {
     rpcArgs = {
       ...common,
       p_num_guests: body.num_guests,
-      p_amount_total: body.amount_total,
-      p_total_price: body.total_price,
-      p_nights: body.nights,
+      p_amount_total: 0,
+      p_total_price: 0,
+      p_nights: 1,
       p_special_requests: body.special_requests ?? null,
       p_include_decoration: body.include_decoration ?? false,
     };
@@ -174,31 +190,12 @@ Deno.serve(async (req) => {
   const { data, error } = await admin.rpc(rpcName, rpcArgs);
 
   if (error) {
-    const msg = error.message ?? 'Could not submit inquiry';
+    const allowed = new Set(['Invalid stay dates', 'Invalid guest count', 'Invalid inquiry details', 'Invalid offer', 'Invalid email address', 'Email is required', 'Property not available', 'Booking unavailable', 'Price not available', 'Too many inquiries. Please try again later.']);
+    const msg = allowed.has(error.message ?? '') ? error.message : 'Could not submit inquiry. Please try again.';
     const status = msg.toLowerCase().includes('too many') ? 429 : 400;
     return json(req, { error: msg }, status);
   }
 
-  const hostContact = await loadHostContact(admin, body.host_id);
-
-  return json(req, {
-    ok: true,
-    ...(data as Record<string, unknown>),
-    ...hostContact,
-  });
+  // Contact release remains an operations decision, not a submission side effect.
+  return json(req, { ok: true, ...(data as Record<string, unknown>) });
 });
-
-async function loadHostContact(
-  admin: ReturnType<typeof createClient>,
-  hostId: string,
-): Promise<{ host_name?: string; host_phone?: string }> {
-  const { data } = await admin.from('hosts').select('name, phone').eq('id', hostId).maybeSingle();
-  if (!data?.phone) return {};
-  const digits = String(data.phone).replace(/\D/g, '').slice(-10);
-  if (digits.length < 10) return {};
-  const name = String(data.name ?? '').trim();
-  return {
-    host_name: name || 'Host',
-    host_phone: digits,
-  };
-}

@@ -1,259 +1,116 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Search } from 'lucide-react';
+import InquiryHostContactCard from '../components/inquiry/success/InquiryHostContactCard';
+import { useEffect, useState } from 'react';
 import Header from '../components/Header';
 import SEOHead from '../components/SEOHead';
 import CustomerReferenceField from '../components/inquiry/CustomerReferenceField';
-import GuestTrustJourney from '../components/inquiry/GuestTrustJourney';
 import InquiryStatusTimeline from '../components/inquiry/InquiryStatusTimeline';
-import { inquiryTrackStatusLabel, trackInquiryByReference, type InquiryTrackResult, type InquiryTrackStatus } from '../lib/inquirySubmit';
-import { markGuestTrackPageVisited, updateGuestInquiryFromTrack } from '../lib/guestTrustStorage';
+import InquiryTermsSummary from '../components/inquiry/InquiryTermsSummary';
+import { inquiryTrackStatusLabel, trackInquiryByReference, type InquiryTrackResult } from '../lib/inquirySubmit';
+import { notificationStatusLabel } from '../lib/inquiryJourney';
+import { updateGuestInquiryFromTrack } from '../lib/guestTrustStorage';
 import { loadInquirySuccessSnapshot } from '../lib/inquirySuccessStorage';
-import { loadBookingConfirmationByReference } from '../lib/bookingConfirmationStorage';
-import { formatInr } from '../lib/guestPricingEngine';
-import { GUEST_PRICING_INQUIRY_TOTAL_NOTE } from '../lib/guestPricingCopy';
 import { navigateTo } from '../lib/navigation';
 
-function statusBadgeClass(status: InquiryTrackStatus): string {
-  switch (status) {
-    case 'cancelled':
-      return 'bg-slate-100 text-slate-700 border border-slate-200';
-    case 'completed':
-    case 'host_responded':
-      return 'bg-emerald-50 text-emerald-800 border border-emerald-200';
-    case 'preparing':
-      return 'bg-amber-50 text-amber-900 border border-amber-200';
-    default:
-      return 'bg-sky-50 text-sky-900 border border-sky-200';
-  }
-}
-
-function parseQuery(): { ref: string; email: string } {
+function initialLookup() {
   const params = new URLSearchParams(window.location.search);
-  return {
-    ref: params.get('ref')?.trim().toUpperCase() ?? '',
-    email: params.get('email')?.trim() ?? '',
-  };
+  const reference = params.get('ref')?.trim().toUpperCase() ?? '';
+  const email = params.get('email')?.trim() || loadInquirySuccessSnapshot(reference)?.guestEmail || '';
+  return { reference, email };
 }
 
 export default function TrackInquiryPage() {
-  const initial = parseQuery();
-  const [reference, setReference] = useState(initial.ref);
+  const [initial] = useState(initialLookup);
+  const [reference, setReference] = useState(initial.reference);
   const [email, setEmail] = useState(initial.email);
+  const [lookup, setLookup] = useState(initial.reference && initial.email ? initial : null);
+  const [refresh, setRefresh] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<InquiryTrackResult | null>(null);
-
-  const handleSearch = useCallback(async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    setError(null);
-    setResult(null);
-
-    if (!reference.trim() || !email.trim()) {
-      setError('Enter your customer reference and email.');
-      return;
-    }
-
-    setLoading(true);
-    const res = await trackInquiryByReference(reference, email);
-    setLoading(false);
-
-    if (!res.ok) {
-      setError('We couldn’t find an inquiry with those details. Check your reference and email.');
-      return;
-    }
-
-    setResult(res.result);
-    updateGuestInquiryFromTrack(res.result);
-  }, [reference, email]);
+  const [checkedAt, setCheckedAt] = useState<string | null>(null);
 
   useEffect(() => {
-    markGuestTrackPageVisited();
-    if (initial.ref && initial.email) {
-      void handleSearch();
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('email')) {
+      url.searchParams.delete('email');
+      window.history.replaceState(null, '', url.pathname + url.search);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!lookup) return;
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      try {
+        const response = await trackInquiryByReference(lookup.reference, lookup.email);
+        if (cancelled) return;
+        if (!response.ok) throw new Error('Lookup failed');
+        setResult(response.result);
+        updateGuestInquiryFromTrack(response.result);
+        setCheckedAt(new Date().toLocaleTimeString('en-IN'));
+        setError(null);
+      } catch {
+        if (!cancelled) setError('Could not refresh. Check your connection, reference and email. Any result below is from the last successful check.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    void load();
+    return () => { cancelled = true; };
+  }, [lookup, refresh]);
+
+  useEffect(() => {
+    const reload = () => { if (document.visibilityState === 'visible') setRefresh(n => n + 1); };
+    window.addEventListener('focus', reload);
+    window.addEventListener('online', reload);
+    document.addEventListener('visibilitychange', reload);
+    const timer = window.setInterval(reload, 30000);
+    return () => {
+      window.removeEventListener('focus', reload);
+      window.removeEventListener('online', reload);
+      document.removeEventListener('visibilitychange', reload);
+      window.clearInterval(timer);
+    };
   }, []);
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--xpx-page, #F8FAFC)' }}>
-      <SEOHead
-        config={{
-          title: 'Track your inquiry | XpressBNB',
-          description: 'Check the status of your stay inquiry with your customer reference.',
-        }}
-      />
-      <Header
-        onAboutClick={() => navigateTo('/?page=about')}
-        onBlogClick={() => navigateTo('/?page=blog')}
-        onHostLoginClick={() => navigateTo('/auth/login')}
-      />
-
-      <main className="max-w-lg mx-auto px-4 py-8 sm:py-12 pb-[max(2rem,env(safe-area-inset-bottom))]">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-xpx-text tracking-tight">
-            Track inquiry
-          </h1>
-          <p className="text-sm text-xpx-muted mt-2 leading-relaxed">
-            Enter the reference from your confirmation and the email you used when booking.
-          </p>
-        </div>
-
-        <form
-          onSubmit={(e) => void handleSearch(e)}
-          className="rounded-2xl p-5 sm:p-6 space-y-4"
-          style={{ background: 'var(--xpx-surface)', border: '1px solid var(--xpx-border)' }}
-        >
-          <label className="block">
-            <span className="block text-[11px] font-bold uppercase tracking-[0.14em] text-xpx-subtle mb-2">
-              Customer reference
-            </span>
-            <input
-              type="text"
-              value={reference}
-              onChange={(e) => setReference(e.target.value.toUpperCase())}
-              placeholder="XPX-240628-00127"
-              className="xpx-input font-mono tracking-wide uppercase"
-              autoComplete="off"
-              spellCheck={false}
-              required
-            />
-          </label>
-
-          <label className="block">
-            <span className="block text-[11px] font-bold uppercase tracking-[0.14em] text-xpx-subtle mb-2">
-              Email
-            </span>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@email.com"
-              className="xpx-input"
-              autoComplete="email"
-              required
-            />
-          </label>
-
-          {error && (
-            <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-3" role="alert">
-              {error}
-            </p>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3.5 rounded-2xl font-bold text-white inline-flex items-center justify-center gap-2 min-h-[52px] disabled:opacity-50"
-            style={{ background: 'var(--xpx-cta)' }}
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" aria-hidden />
-                Looking up…
-              </>
-            ) : (
-              <>
-                <Search className="w-5 h-5" aria-hidden />
-                View status
-              </>
-            )}
-          </button>
+      <SEOHead config={{ title: 'Track your inquiry | XpressBNB', robots: 'noindex, nofollow', description: 'Check the latest recorded response to your inquiry.' }} />
+      <Header onAboutClick={() => navigateTo('/?page=about')} onBlogClick={() => navigateTo('/?page=blog')} onHostLoginClick={() => navigateTo('/auth/login')} />
+      <main className="max-w-xl mx-auto px-4 py-8 pb-28 space-y-5">
+        <h1 className="text-2xl font-extrabold text-xpx-text">Track inquiry</h1>
+        <p className="text-sm text-xpx-muted">Use your inquiry reference and email. No account is needed. Status refreshes when you return or reconnect.</p>
+        <form className="rounded-2xl border bg-white p-5 space-y-4" onSubmit={event => {
+          event.preventDefault();
+          setResult(null); setCheckedAt(null); setError(null);
+          setLookup({ reference: reference.trim().toUpperCase(), email: email.trim() });
+        }}>
+          <label className="block text-sm font-semibold">Customer reference<input className="xpx-input mt-2" value={reference} onChange={e => setReference(e.target.value.toUpperCase())} required autoComplete="off" maxLength={80} /></label>
+          <label className="block text-sm font-semibold">Email<input className="xpx-input mt-2" type="email" value={email} onChange={e => setEmail(e.target.value)} required autoComplete="email" maxLength={254} /></label>
+          <button className="w-full rounded-xl bg-emerald-700 text-white font-bold p-3 disabled:opacity-50" disabled={loading} type="submit">{loading ? 'Checking…' : 'View latest status'}</button>
         </form>
+        {error && <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{error}</p>}
+        {result && <div className="space-y-4">
+          <CustomerReferenceField reference={result.customerReference} />
+          <section className="rounded-2xl border bg-white p-5 space-y-4">
+            <h2 className="font-bold text-xpx-text" aria-live="polite">{inquiryTrackStatusLabel(result.displayStatus)}</h2>
+            <p className="text-xs text-xpx-muted">Last checked {checkedAt}. This inquiry is not a final booking confirmation.</p>
+            <InquiryStatusTimeline variant="track" displayStatus={result.displayStatus} />
+            {result.hostDecisionNote && <p className="text-sm"><strong>Host response:</strong> {result.hostDecisionNote}</p>}
+            <p className="text-sm text-xpx-muted">{notificationStatusLabel(result.notificationStatus)}</p>
+          </section>
+          <p className="text-sm">Requested stay: {result.checkInDate} to {result.checkOutDate ?? 'pending'}{result.numGuests != null ? ` · ${result.numGuests} guests` : ''}</p>
+          <InquiryTermsSummary terms={result.terms} />
+          {result.hostContact && <InquiryHostContactCard hostName={result.hostContact.name} hostPhoneDigits={result.hostContact.phone} propertyTitle={result.terms?.property_title ?? 'Requested property'} />}
 
-        {result && (
-          <div className="mt-6 space-y-4">
-            <CustomerReferenceField reference={result.customerReference} />
-
-            {(() => {
-              const amount =
-                loadInquirySuccessSnapshot(result.customerReference)?.estimatedTotal ??
-                loadBookingConfirmationByReference(result.customerReference)?.estimatedTotal;
-              if (!amount || amount <= 0) return null;
-              return (
-                <div
-                  className="rounded-2xl p-5"
-                  style={{ background: 'var(--xpx-surface)', border: '1px solid var(--xpx-border)' }}
-                >
-                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-xpx-subtle">
-                    Request amount
-                  </p>
-                  <p className="mt-1 text-2xl font-extrabold text-xpx-text tabular-nums">
-                    {formatInr(amount)}
-                  </p>
-                  <p className="mt-2 text-xs text-xpx-muted leading-relaxed">
-                    {GUEST_PRICING_INQUIRY_TOTAL_NOTE}
-                  </p>
-                </div>
-              );
-            })()}
-
-            <div
-              className="rounded-2xl p-5"
-              style={{ background: 'var(--xpx-surface)', border: '1px solid var(--xpx-border)' }}
-            >
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <h2 className="text-sm font-bold text-xpx-text">Status</h2>
-                <span className={`inline-flex px-3 py-1 rounded-full text-xs font-bold ${statusBadgeClass(result.displayStatus)}`}>
-                  {inquiryTrackStatusLabel(result.displayStatus)}
-                </span>
-              </div>
-              <InquiryStatusTimeline variant="track" displayStatus={result.displayStatus} />
-              {result.reviewedAt && result.displayStatus !== 'preparing' && (
-                <p className="mt-4 text-xs text-xpx-muted border-t border-slate-200/80 pt-3">
-                  Reviewed by{' '}
-                  <span className="font-semibold text-xpx-text">XpressBNB Operations</span>
-                  <span className="text-xpx-subtle">
-                    {' '}
-                    ·{' '}
-                    {new Date(result.reviewedAt).toLocaleString('en-IN', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric',
-                      hour: 'numeric',
-                      minute: '2-digit',
-                    })}
-                  </span>
-                </p>
-              )}
-            </div>
-
-            {result.checkInDate && (
-              <p className="text-sm text-xpx-muted text-center">
-                Stay:{' '}
-                <span className="font-semibold text-xpx-text">
-                  {new Date(result.checkInDate).toLocaleDateString('en-IN', {
-                    month: 'short',
-                    day: 'numeric',
-                  })}
-                  {result.checkOutDate
-                    ? ` → ${new Date(result.checkOutDate).toLocaleDateString('en-IN', {
-                        month: 'short',
-                        day: 'numeric',
-                      })}`
-                    : ''}
-                </span>
-              </p>
-            )}
-
-            <GuestTrustJourney
-              compact
-              context={{
-                hasTrackedPage: true,
-                inquiries: [
-                  {
-                    customerReference: result.customerReference,
-                    submittedAt: result.createdAt
-                      ? new Date(result.createdAt).getTime()
-                      : Date.now(),
-                    lastDisplayStatus: result.displayStatus,
-                    reviewedAt: result.reviewedAt,
-                    phoneVerified: result.phoneVerified,
-                  },
-                ],
-              }}
-            />
-          </div>
-        )}
+          <section className="rounded-2xl border bg-white p-5 text-sm space-y-2">
+            <h2 className="font-bold">Xpress Score: verified facts first</h2>
+            <p>{result.reviewedAt ? 'An operations review is recorded for this inquiry.' : 'Operations review is pending.'} This is not identity verification or a safety guarantee.</p>
+            <p>A numerical trust score and verified-stay reviews are unavailable until completed stays can be reliably verified.</p>
+            <a className="font-semibold underline" href="mailto:support@xpressbnb.com">Report a problem or challenge an inaccurate record</a>
+          </section>
+        </div>}
       </main>
     </div>
   );

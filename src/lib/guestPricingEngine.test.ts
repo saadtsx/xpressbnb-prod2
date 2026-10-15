@@ -61,6 +61,8 @@ describe('buildGuestPricingQuote', () => {
     expect(quote.guestTotal).toBe(0);
   });
 
+  it('preserves paise in server amounts', () => { expect(formatInr(1234.56)).toBe('₹1,234.56'); });
+
   it('formatInr uses Indian grouping', () => {
     expect(formatInr(5120)).toBe('₹5,120');
   });

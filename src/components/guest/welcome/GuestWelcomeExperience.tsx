@@ -36,7 +36,7 @@ export default function GuestWelcomeExperience({ snapshot, hostName }: GuestWelc
     ? buildInquirySuccessWhatsAppLink(hostPhoneDigits, snapshot.propertyTitle)
     : null;
 
-  const trackPath = `/track-inquiry?ref=${encodeURIComponent(snapshot.customerReference)}&email=${encodeURIComponent(snapshot.guestEmail)}`;
+  const trackPath = `/track-inquiry?ref=${encodeURIComponent(snapshot.customerReference)}`;
 
   return (
     <div className="mx-auto w-full max-w-2xl">

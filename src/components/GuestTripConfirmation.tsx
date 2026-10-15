@@ -85,7 +85,7 @@ export default function GuestTripConfirmation({
       case 'offer_pending':
         return isPreparing ? 'Preparing your offer' : 'Offer submitted';
       case 'paid':
-        return 'Paid';
+        return 'Payment record — verification unavailable';
       default:
         return 'Inquiry submitted';
     }
@@ -110,7 +110,7 @@ export default function GuestTripConfirmation({
           <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10" strokeWidth={2} style={{ color: '#3dae68' }} />
         </div>
         <h1 id="trip-confirmation-title" className="text-2xl sm:text-3xl font-extrabold text-xpx-text tracking-tight">
-          {isPreparing ? 'Your inquiry has been received' : "You're all set"}
+          {isPreparing ? 'Your inquiry has been received' : 'Inquiry record — check latest status'}
         </h1>
         <p className="text-xpx-muted mt-2 text-sm sm:text-base leading-relaxed">
           {isPreparing

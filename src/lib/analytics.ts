@@ -8,6 +8,8 @@ export const GA4_MEASUREMENT_ID = 'G-HLZN3RJKTN';
 export const GOOGLE_ADS_ID = 'AW-17923088071';
 
 export type XpressEventName =
+  | 'price_terms_viewed'
+  | 'price_comparison_unavailable'
   | 'property_view'
   | 'property_card_click'
   | 'city_page_view'

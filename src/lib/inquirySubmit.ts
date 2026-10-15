@@ -1,3 +1,4 @@
+import { inquiryDecisionLabel, parseInquiryTerms, type InquiryTerms } from './inquiryJourney';
 import { supabase } from './supabase';
 import { parseFrequentAmigoStatus, type FrequentAmigoStatus } from './inquiryHostContact';
 import { safeHostDisplayName } from './host';
@@ -113,6 +114,7 @@ export async function submitBookingInquiry(
 }
 
 export type InquiryTrackStatus =
+  | 'accepted' | 'rejected' | 'review_declined' | 'countered' | 'legacy_unverified'
   | 'preparing'
   | 'sent_to_host'
   | 'viewed_by_host'
@@ -131,25 +133,16 @@ export type InquiryTrackResult = {
   createdAt: string | null;
   updatedAt: string | null;
   reviewedAt: string | null;
+  terms: InquiryTerms | null;
+  hostContact: { name: string; phone: string } | null;
+  notificationStatus: string;
+  hostDecisionNote: string | null;
+  responseVersion: number;
+  numGuests: number | null;
 };
 
 export function inquiryTrackStatusLabel(status: InquiryTrackStatus): string {
-  switch (status) {
-    case 'preparing':
-      return 'Preparing';
-    case 'sent_to_host':
-      return 'Sent to host';
-    case 'viewed_by_host':
-      return 'Viewed by host';
-    case 'host_responded':
-      return 'Host responded';
-    case 'completed':
-      return 'Completed';
-    case 'cancelled':
-      return 'Cancelled';
-    default:
-      return 'Preparing';
-  }
+  return inquiryDecisionLabel(status);
 }
 
 export async function trackInquiryByReference(
@@ -183,6 +176,19 @@ export async function trackInquiryByReference(
       createdAt: o.created_at ? String(o.created_at) : null,
       updatedAt: o.updated_at ? String(o.updated_at) : null,
       reviewedAt: o.reviewed_at ? String(o.reviewed_at) : null,
+      terms: parseInquiryTerms(o.terms),
+      hostContact: parseHostContact(o.host_contact),
+      notificationStatus: String(o.notification_status ?? 'not_queued'),
+      hostDecisionNote: typeof o.host_decision_note === 'string' ? o.host_decision_note : null,
+      responseVersion: Number(o.response_version ?? 0),
+      numGuests: typeof o.num_guests === 'number' ? o.num_guests : null,
     },
   };
+}
+
+function parseHostContact(value: unknown): { name: string; phone: string } | null {
+  if (!value || typeof value !== 'object') return null;
+  const o = value as Record<string, unknown>;
+  const phone = typeof o.phone === 'string' ? o.phone.replace(/\D/g, '').slice(-10) : '';
+  return phone.length === 10 ? { name: safeHostDisplayName(typeof o.name === 'string' ? o.name : '', 'Host'), phone } : null;
 }

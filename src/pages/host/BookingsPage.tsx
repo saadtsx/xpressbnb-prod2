@@ -18,7 +18,6 @@ import {
 } from 'lucide-react';
 import {
   parseOfferFromSpecialRequests,
-  buildCounterOfferRequest,
   type ParsedOffer,
 } from '../../lib/offers';
 import CounterOfferDialog from '../../components/CounterOfferDialog';
@@ -29,7 +28,8 @@ import {
   guestPhoneToE164,
   buildGuestDirectWhatsAppLink,
 } from '../../lib/inquiryGuestContact';
-import { notifyGuestInquiryDecision } from '../../lib/guestInquiryNotify';
+import InquiryTermsSummary from '../../components/inquiry/InquiryTermsSummary';
+import { parseInquiryTerms } from '../../lib/inquiryJourney';
 import { theme } from '../../lib/theme';
 import HostValueProp from '../../components/host/HostValueProp';
 import InquiryTrustBadgePill from '../../components/inquiry/InquiryTrustBadgePill';
@@ -45,6 +45,10 @@ type BookingRow = Database['public']['Tables']['bookings']['Row'];
 type BookingStatus = BookingRow['status'];
 
 type Booking = BookingRow & {
+  response_version: number;
+  response_kind: string | null;
+  counter_amount: number | null;
+  inquiry_terms: unknown;
   contact_released?: boolean | null;
   quality_review_pending?: boolean | null;
   properties: {
@@ -200,6 +204,15 @@ export default function BookingsPage({ onNavigate }: BookingsPageProps = {}) {
     };
   }, [host?.id, loadBookings]);
 
+  useEffect(() => {
+    const refresh = () => { if (document.visibilityState === 'visible') void loadBookings(); };
+    window.addEventListener('focus', refresh);
+    window.addEventListener('online', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    const timer = window.setInterval(refresh, 30000);
+    return () => { window.clearInterval(timer); window.removeEventListener('focus', refresh); window.removeEventListener('online', refresh); document.removeEventListener('visibilitychange', refresh); };
+  }, [loadBookings]);
+
   const tabCounts = useMemo(() => {
     const counts: Record<InquiryTab, number> = { new: 0, offers: 0, accepted: 0, rejected: 0 };
     for (const b of bookings) {
@@ -217,22 +230,16 @@ export default function BookingsPage({ onNavigate }: BookingsPageProps = {}) {
   const handleAccept = async (b: Booking) => {
     setBusyId(b.id);
     try {
-      const isOffer = isOfferInquiry(b);
-      const { error } = await supabase
-        .from('bookings')
-        .update({
-          status: 'accepted',
-          host_decision_at: new Date().toISOString(),
-          ...(isOffer ? { payment_status: 'inquiry' } : {}),
-        })
-        .eq('id', b.id);
+      const { error } = await supabase.rpc('respond_to_inquiry', {
+        p_booking_id: b.id, p_action: 'accepted', p_expected_version: b.response_version,
+        p_request_id: crypto.randomUUID(),
+      });
       if (error) throw error;
-      notifyGuestInquiryDecision(b, 'accepted', b.properties?.title);
       await loadBookings();
       setTab('accepted');
     } catch (e) {
       console.error('Accept inquiry failed', e);
-      alert('Could not accept the inquiry. Please try again.');
+      alert('Could not accept. Refresh the inquiry before retrying.');
     } finally {
       setBusyId(null);
     }
@@ -243,24 +250,17 @@ export default function BookingsPage({ onNavigate }: BookingsPageProps = {}) {
     const b = rejectTarget;
     setBusyId(b.id);
     try {
-      const isOffer = isOfferInquiry(b);
-      const { error } = await supabase
-        .from('bookings')
-        .update({
-          status: 'rejected',
-          host_decision_at: new Date().toISOString(),
-          host_decision_note: note || null,
-          ...(isOffer ? { payment_status: 'offer_rejected' } : {}),
-        })
-        .eq('id', b.id);
+      const { error } = await supabase.rpc('respond_to_inquiry', {
+        p_booking_id: b.id, p_action: 'rejected', p_expected_version: b.response_version,
+        p_request_id: crypto.randomUUID(), p_note: note || null,
+      });
       if (error) throw error;
-      notifyGuestInquiryDecision(b, 'rejected', b.properties?.title);
       setRejectTarget(null);
       await loadBookings();
       setTab('rejected');
     } catch (e) {
       console.error('Reject inquiry failed', e);
-      alert('Could not reject the inquiry. Please try again.');
+      alert('Could not reject. Refresh the inquiry before retrying.');
     } finally {
       setBusyId(null);
     }
@@ -271,41 +271,16 @@ export default function BookingsPage({ onNavigate }: BookingsPageProps = {}) {
     const { booking } = counterTarget;
     setBusyId(booking.id);
     try {
-      const updatedRequests = buildCounterOfferRequest(
-        booking.special_requests ?? '',
-        newPerNight,
-        hostMessage,
-      );
-      const { error } = await supabase
-        .from('bookings')
-        .update({
-          special_requests: updatedRequests,
-          payment_status: 'offer_countered',
-        })
-        .eq('id', booking.id);
+      const { error } = await supabase.rpc('respond_to_inquiry', {
+        p_booking_id: booking.id, p_action: 'countered', p_expected_version: booking.response_version,
+        p_request_id: crypto.randomUUID(), p_note: hostMessage || null, p_counter_amount: newPerNight,
+      });
       if (error) throw error;
       setCounterTarget(null);
       await loadBookings();
     } catch (e) {
       console.error('Counter offer failed', e);
-      alert('Could not send counter. Please try again.');
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  const handleMarkComplete = async (bookingId: string) => {
-    setBusyId(bookingId);
-    try {
-      const { error } = await supabase
-        .from('bookings')
-        .update({ status: 'completed' })
-        .eq('id', bookingId);
-      if (error) throw error;
-      await loadBookings();
-    } catch (error) {
-      console.error('Error completing booking:', error);
-      alert('Failed to update booking');
+      alert('Could not send counter. Refresh the inquiry before retrying.');
     } finally {
       setBusyId(null);
     }
@@ -333,7 +308,7 @@ export default function BookingsPage({ onNavigate }: BookingsPageProps = {}) {
   const statusLabel = (status: BookingStatus) => {
     if (status === 'pending_host') return 'Awaiting you';
     if (status === 'inquiry_preparing') return 'Preparing';
-    if (status === 'accepted') return 'Accepted';
+    if (status === 'accepted') return 'Accepted — not confirmed';
     if (status === 'rejected') return 'Rejected';
     return status.replace(/_/g, ' ');
   };
@@ -422,7 +397,6 @@ export default function BookingsPage({ onNavigate }: BookingsPageProps = {}) {
               onAccept={() => handleAccept(booking)}
               onReject={() => setRejectTarget(booking)}
               onCounter={(offer) => setCounterTarget({ booking, offer })}
-              onMarkComplete={() => handleMarkComplete(booking.id)}
             />
           ))}
         </div>
@@ -559,7 +533,6 @@ function InquiryCard({
   onAccept,
   onReject,
   onCounter,
-  onMarkComplete,
 }: {
   booking: Booking;
   tab: InquiryTab;
@@ -569,9 +542,11 @@ function InquiryCard({
   onAccept: () => void;
   onReject: () => void;
   onCounter: (offer: ParsedOffer) => void;
-  onMarkComplete: () => void;
 }) {
-  const offer = parseOfferFromSpecialRequests(booking.special_requests);
+  const parsed = parseOfferFromSpecialRequests(booking.special_requests);
+  const offer = booking.inquiry_type === 'make_offer' && booking.offer_amount != null && booking.nights != null
+    ? { perNight: booking.offer_amount, nights: booking.nights, total: booking.offer_amount * booking.nights, guestNote: booking.offer_message ?? '', hostCounter: booking.counter_amount }
+    : parsed;
   const isOffer = isOfferInquiry(booking);
   const isBusy = busyId === booking.id;
   const styles = getStatusStyles(booking.status);
@@ -635,7 +610,7 @@ function InquiryCard({
                 Offer
               </span>
             )}
-            {booking.payment_status === 'offer_countered' && (
+            {(booking.response_kind === 'countered' || booking.payment_status === 'offer_countered') && (
               <span
                 className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider"
                 style={{ background: 'rgba(37,99,235,0.10)', color: '#2563EB' }}
@@ -701,7 +676,7 @@ function InquiryCard({
                 </p>
               </div>
               <div className="rounded-xl p-3" style={{ background: 'var(--xpx-surface-light)' }}>
-                <p className="text-[10px] uppercase tracking-wider text-xpx-subtle">Total</p>
+                <p className="text-[10px] uppercase tracking-wider text-xpx-subtle">Offer estimate</p>
                 <p className="text-base font-bold text-xpx-text mt-0.5">
                   ₹{(offer.total ?? 0).toLocaleString()}
                 </p>
@@ -752,6 +727,8 @@ function InquiryCard({
             <InquiryHostTrustPanel booking={booking} showReference={false} />
           )}
 
+          <div className="mt-4"><InquiryTermsSummary terms={parseInquiryTerms(booking.inquiry_terms)} /></div>
+          {booking.counter_amount != null && <p className="mt-2 text-sm font-semibold">Current counteroffer: ₹{booking.counter_amount.toLocaleString('en-IN')}/night · proposal {booking.response_version}</p>}
           {!isOffer && (
             <div className="mt-3 flex items-center gap-2 text-lg font-bold text-xpx-text">
               <IndianRupee className="w-5 h-5" />
@@ -782,7 +759,7 @@ function InquiryCard({
             </div>
           )}
 
-          {booking.host_decision_note && tab !== 'new' && tab !== 'offers' && (
+          {booking.host_decision_note && (
             <p className="mt-3 text-sm text-xpx-muted italic">
               Your note: {booking.host_decision_note}
             </p>
@@ -795,7 +772,7 @@ function InquiryCard({
               <button
                 type="button"
                 onClick={onAccept}
-                disabled={isBusy}
+                disabled={isBusy || booking.response_kind === 'countered'}
                 className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-sm transition-all disabled:opacity-50"
                 style={{
                   background: theme.warm,
@@ -838,23 +815,8 @@ function InquiryCard({
             </>
           )}
 
-          {tab === 'accepted' &&
-            (booking.status === 'confirmed' || booking.status === 'accepted') && (
-              <button
-                type="button"
-                onClick={onMarkComplete}
-                disabled={isBusy}
-                className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl font-medium text-sm disabled:opacity-50"
-                style={{
-                  background: 'rgba(37,99,235,0.08)',
-                  color: '#2563EB',
-                  border: '1px solid rgba(37,99,235,0.30)',
-                }}
-              >
-                <CheckCircle className="w-4 h-4" />
-                Mark complete
-              </button>
-            )}
+          <p className="text-xs text-xpx-muted">Acceptance is an inquiry response. Final price, payment and reservation still require agreement with the guest.</p>
+
         </div>
       </div>
     </article>

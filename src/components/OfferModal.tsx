@@ -1,3 +1,4 @@
+import InquiryTermsSummary from './inquiry/InquiryTermsSummary';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { X, Tag, MessageCircle, Mail, User, ArrowDown, Sparkles } from 'lucide-react';
 import { theme } from '../lib/theme';
@@ -588,6 +589,7 @@ export default function OfferModal({
               </p>
             )}
 
+            <InquiryTermsSummary terms={{ accepts_local_ids: property.accepts_local_ids }} />
             <button
               type="submit"
               disabled={submitting}

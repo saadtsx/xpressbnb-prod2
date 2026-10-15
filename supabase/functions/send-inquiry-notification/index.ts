@@ -48,6 +48,7 @@ type BookingRow = {
   phone_verified: boolean;
   reviewed_at: string | null;
   reviewed_by: string | null;
+  response_version: number;
 };
 
 function inquiryContactReleased(booking: BookingRow): boolean {
@@ -128,7 +129,7 @@ async function loadContext(bookingId: string): Promise<{
   ctx: InquiryMessageContext;
 }> {
   const bookings = await rest<BookingRow[]>(
-    `bookings?id=eq.${bookingId}&select=id,property_id,host_id,guest_name,guest_email,guest_phone,check_in_date,check_out_date,status,inquiry_type,customer_reference,phone_verified,reviewed_at,reviewed_by&limit=1`,
+    `bookings?id=eq.${bookingId}&select=id,property_id,host_id,guest_name,guest_email,guest_phone,check_in_date,check_out_date,status,inquiry_type,customer_reference,phone_verified,reviewed_at,reviewed_by,response_version&limit=1`,
   );
   const booking = bookings[0];
   if (!booking) throw new Error('Booking not found');
@@ -234,9 +235,9 @@ async function sendAndRecord(opts: {
       message_body: opts.body,
       status,
       provider_message_id: result.messageId,
-      sent_at: now,
+      sent_at: result.mode === 'api' ? now : null,
     });
-    return { sent: true, notificationId: id };
+    return { sent: result.mode === 'api', notificationId: id };
   }
 
   const id = await insertNotification({
@@ -258,14 +259,17 @@ async function processQueueItem(queue: QueueRow): Promise<{ messages: number; ok
     return { messages: 0, ok: true };
   }
 
-  await rest(`booking_notification_queue?id=eq.${queue.id}`, {
-    method: 'PATCH',
-    prefer: 'return=minimal',
-    body: JSON.stringify({ status: 'processing' }),
+  const claimed = await rest<QueueRow[]>(`booking_notification_queue?id=eq.${queue.id}&status=eq.pending`, {
+    method: 'PATCH', prefer: 'return=representation', body: JSON.stringify({ status: 'processing' }),
   });
+  if (claimed.length === 0) return { messages: 0, ok: true };
 
   const { booking, hostPhone, ctx } = await loadContext(queue.booking_id);
   const contactReleased = inquiryContactReleased(booking);
+  if (!contactReleased || (queue.payload.response_version != null && Number(queue.payload.response_version) !== booking.response_version)) {
+    await rest(`booking_notification_queue?id=eq.${queue.id}`, { method: 'PATCH', body: JSON.stringify({ status: 'failed', processed_at: new Date().toISOString() }) });
+    return { messages: 0, ok: false };
+  }
   const locale: Locale = 'en';
   let sentCount = 0;
   let anyFailed = false;
@@ -302,6 +306,10 @@ async function processQueueItem(queue: QueueRow): Promise<{ messages: number; ok
         body: guestInquiryAcceptedMessage(ctx, locale),
       });
       break;
+    case 'inquiry_host_countered':
+      tasks.push({ role: 'guest', phone: booking.guest_phone, eventSuffix: 'guest_countered',
+        body: `The host proposed a different price for your inquiry. Review the latest proposal at https://www.xpressbnb.com/track-inquiry with your reference and email. This is not a confirmed booking.` });
+      break;
     case 'inquiry_host_rejected':
       tasks.push({
         role: 'guest',
@@ -311,7 +319,7 @@ async function processQueueItem(queue: QueueRow): Promise<{ messages: number; ok
       });
       break;
     default:
-      console.warn('Unknown queue event_type', queue.event_type);
+      anyFailed = true;
   }
 
   for (const t of tasks) {
@@ -344,7 +352,7 @@ async function processQueueItem(queue: QueueRow): Promise<{ messages: number; ok
     else anyFailed = true;
   }
 
-  const finalStatus = anyFailed && sentCount === 0 ? 'failed' : 'sent';
+  const finalStatus = anyFailed || tasks.length === 0 ? 'failed' : 'sent';
   await rest(`booking_notification_queue?id=eq.${queue.id}`, {
     method: 'PATCH',
     prefer: 'return=minimal',
@@ -354,7 +362,7 @@ async function processQueueItem(queue: QueueRow): Promise<{ messages: number; ok
     }),
   });
 
-  return { messages: sentCount, ok: !anyFailed || sentCount > 0 };
+  return { messages: sentCount, ok: !anyFailed && tasks.length > 0 };
 }
 
 async function fetchPendingQueue(limit: number): Promise<QueueRow[]> {
@@ -426,10 +434,10 @@ Deno.serve(async (req: Request) => {
       status: 200,
       headers: { ...cors, 'Content-Type': 'application/json' },
     });
-  } catch (e) {
-    console.error(e);
+  } catch {
+    console.error('Notification processing failed; inspect restricted queue records.');
     return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : 'Internal error' }),
+      JSON.stringify({ error: 'Notification processing failed' }),
       {
         status: 500,
         headers: { ...cors, 'Content-Type': 'application/json' },

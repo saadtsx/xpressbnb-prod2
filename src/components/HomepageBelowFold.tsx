@@ -47,9 +47,10 @@ export type HomepageBelowFoldProps = {
   onCityClick: (city: string) => void;
   onNavigate: (path: string) => void;
   scrollTo: (id: string) => void;
+  suppressNearbyScroll?: boolean;
 };
 
-export default function HomepageBelowFold({ onCityClick, onNavigate, scrollTo }: HomepageBelowFoldProps) {
+export default function HomepageBelowFold({ onCityClick, onNavigate, scrollTo, suppressNearbyScroll = false }: HomepageBelowFoldProps) {
   const [properties, setProperties] = useState<Property[]>([]);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [attempt, setAttempt] = useState(0);
@@ -101,10 +102,11 @@ export default function HomepageBelowFold({ onCityClick, onNavigate, scrollTo }:
     if (!nearby?.shouldScrollToNearby || nearby.isLoading) return;
     setFilter('Nearby');
     nearby.clearScrollToNearby();
+    if (suppressNearbyScroll) return;
     document.getElementById('nearby')?.scrollIntoView({
       behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start',
     });
-  }, [nearby]);
+  }, [nearby, suppressNearbyScroll]);
 
   const retry = () => { invalidatePublicListingsCache(); setAttempt(value => value + 1); };
   return <>
@@ -118,7 +120,7 @@ export default function HomepageBelowFold({ onCityClick, onNavigate, scrollTo }:
           {CATEGORIES.map(item => <button key={item.id} aria-pressed={category === item.id} onClick={() => setCategory(item.id)}>{item.icon && <item.icon size={22} strokeWidth={1.6} aria-hidden />}{item.label}</button>)}
         </div>
         <details className="hp-destination-filter"><summary><MapPin size={14} aria-hidden />{activeFilter === 'All stays' ? 'All destinations' : activeFilter === 'Nearby' ? 'Near you' : activeFilter}<ChevronDown size={14} aria-hidden /></summary><div className="hp-city-filters" role="group" aria-label="Filter stays by destination">
-          {(hasLocation ? ['Nearby', 'All stays', ...HOMEPAGE_CITY_BUCKETS] : ['All stays', ...HOMEPAGE_CITY_BUCKETS]).map(city => <button key={city} aria-pressed={activeFilter === city} onClick={() => setFilter(city)}>{city === 'Nearby' && <MapPin size={14} />}{city === 'Nearby' ? 'Near you' : city === 'All stays' ? 'All destinations' : city}</button>)}
+          {(hasLocation ? ['Nearby', 'All stays', ...HOMEPAGE_CITY_BUCKETS] : ['All stays', ...HOMEPAGE_CITY_BUCKETS]).map(city => <button key={city} aria-pressed={activeFilter === city} onClick={() => { setFilter(city); if (city !== 'Nearby' && city !== 'All stays') onCityClick(city); }}>{city === 'Nearby' && <MapPin size={14} />}{city === 'Nearby' ? 'Near you' : city === 'All stays' ? 'All destinations' : city}</button>)}
         </div></details>
         <div id="nearby" className="hp-inventory" aria-busy={waiting}>
           {waiting ? <><p className="sr-only" role="status">Loading stays</p><div className="hp-loading-grid">{[0, 1, 2, 3].map(index => <ListingPropertyCardSkeleton key={index} />)}</div></>

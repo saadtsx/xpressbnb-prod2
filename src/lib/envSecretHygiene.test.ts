@@ -19,6 +19,11 @@ function walk(dir: string, out: string[] = []): string[] {
 }
 
 describe('client env secret hygiene', () => {
+  it('local environment files do not define public-prefixed secrets', () => {
+    const offenders = readdirSync(PROJECT_ROOT).filter(name => /^\.env(?:\.|$)/.test(name))
+      .filter(name => FORBIDDEN.test(readFileSync(join(PROJECT_ROOT, name), 'utf8')));
+    expect(offenders).toEqual([]); // Never print file contents or secret values.
+  });
   it('no source file references a VITE_-prefixed secret variable', () => {
     const self = fileURLToPath(import.meta.url);
     const offenders = walk(SRC_ROOT)
