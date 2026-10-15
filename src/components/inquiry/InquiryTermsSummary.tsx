@@ -26,7 +26,11 @@ export default function InquiryTermsSummary({ terms }: { terms: InquiryTerms | n
           ['Payment status', 'External payment — unverified by XpressBNB'],
         ].map(([label, value]) => <div key={label} className="flex justify-between gap-4"><dt>{label}</dt><dd className="text-right text-xpx-text max-w-[55%]">{value}</dd></div>)}
       </dl>
-      {terms?.previous_estimate != null && <p className="rounded-lg bg-amber-50 p-3 text-amber-900">The estimate changed from {amount(terms.previous_estimate)} to {amount(terms.estimate)}. Review the new proposal with the host. You have not accepted it here.</p>}
+      {terms?.guest_consent === 'given'
+        ? <p className="rounded-lg bg-emerald-50 p-3 text-emerald-900">You agreed to the host's proposed estimate of {amount(terms.estimate)}. This is not a booking confirmation; payment and remaining terms are still to be agreed with the host.</p>
+        : terms?.guest_consent === 'declined'
+          ? <p className="rounded-lg bg-slate-50 p-3 text-xpx-muted">You declined the host's counteroffer. This inquiry is closed.</p>
+          : terms?.previous_estimate != null && <p className="rounded-lg bg-amber-50 p-3 text-amber-900">The estimate changed from {amount(terms.previous_estimate)} to {amount(terms.estimate)}. Review the new proposal above. You have not accepted it yet.</p>}
       <p className="text-xs text-xpx-muted">{terms?.version != null ? `Proposal version ${terms.version}. ` : ''}Host acceptance does not reserve or confirm this stay. Obtain the complete written terms before agreeing or paying. No fixed advance percentage or payment protection is offered by this inquiry workflow.</p>
     </section>
   );

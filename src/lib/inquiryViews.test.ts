@@ -15,8 +15,14 @@ describe('inquiry views', () => {
   it('shows previous and current counteroffer estimates and explicit lack of acceptance', () => {
     const html = renderToStaticMarkup(createElement(InquiryTermsSummary, { terms: { version: 2, estimate: 2500.50, previous_estimate: 2000 } }));
     expect(html).toContain('₹2,500.5'); expect(html).toContain('₹2,000');
-    expect(html).toContain('You have not accepted it here');
+    expect(html).toContain('You have not accepted it yet');
     expect(html).toContain('Proposal version 2');
+  });
+  it('guest consent states never claim a confirmed booking', () => {
+    const given = renderToStaticMarkup(createElement(InquiryTermsSummary, { terms: { version: 3, estimate: 7500, previous_estimate: 9000, guest_consent: 'given' } }));
+    expect(given).toContain('You agreed to the host'); expect(given).toContain('not a booking confirmation'); expect(given).not.toContain('not accepted it yet');
+    const declined = renderToStaticMarkup(createElement(InquiryTermsSummary, { terms: { version: 3, guest_consent: 'declined' } }));
+    expect(declined).toContain('You declined the host');
   });
   it('operations rejection does not claim host receipt or response', () => {
     const html = renderToStaticMarkup(createElement(InquiryStatusTimeline, { variant: 'track', displayStatus: 'review_declined' }));

@@ -52,6 +52,16 @@ export function guestInquiryRejectedMessage(ctx: InquiryMessageContext, locale?:
   return `Your inquiry for ${ctx.propertyTitle} ${ctx.dateRange} was declined by the host.`;
 }
 
+export function hostCounterAcceptedMessage(ctx: InquiryMessageContext): string {
+  const ref = ctx.customerReference ? ` Ref ${ctx.customerReference}.` : '';
+  return `The guest agreed to your counteroffer for ${ctx.propertyTitle} ${ctx.dateRange}.${ref} This is not a confirmed booking or payment — agree the full terms with the guest. Dashboard: ${ctx.dashboardLink}`;
+}
+
+export function hostCounterDeclinedMessage(ctx: InquiryMessageContext): string {
+  const ref = ctx.customerReference ? ` Ref ${ctx.customerReference}.` : '';
+  return `The guest declined your counteroffer for ${ctx.propertyTitle} ${ctx.dateRange}.${ref} The inquiry is closed.`;
+}
+
 export function formatDateRange(checkIn: string, checkOut: string): string {
   try {
     const inD = new Date(checkIn);

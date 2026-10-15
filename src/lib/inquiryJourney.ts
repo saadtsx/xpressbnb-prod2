@@ -11,6 +11,7 @@ export type InquiryTerms = {
   previous_estimate?: number | null;
   price_source?: string;
   accepts_local_ids?: boolean | null;
+  guest_consent?: string;
 };
 
 export function inquiryDecisionLabel(status: string): string {
@@ -22,6 +23,8 @@ export function inquiryDecisionLabel(status: string): string {
     rejected: 'Host declined',
     review_declined: 'Inquiry closed during operations review',
     countered: 'Host counteroffer — your agreement needed',
+    counter_accepted: 'You accepted the counteroffer — booking not confirmed',
+    counter_declined: 'You declined the counteroffer — inquiry closed',
     cancelled: 'Inquiry cancelled',
     legacy_unverified: 'Legacy status — confirmation not verified',
     host_responded: 'Host responded — check latest status',
@@ -50,9 +53,35 @@ export function parseInquiryTerms(value: unknown): InquiryTerms | null {
     const n = obj[key];
     if (typeof n === 'number' && Number.isFinite(n) && n >= 0) terms[key] = n;
   }
-  for (const key of ['property_title', 'check_in', 'check_out', 'price_source'] as const) {
+  for (const key of ['property_title', 'check_in', 'check_out', 'price_source', 'guest_consent'] as const) {
     if (typeof obj[key] === 'string') terms[key] = obj[key];
   }
   if (typeof obj.accepts_local_ids === 'boolean') terms.accepts_local_ids = obj.accepts_local_ids;
   return terms;
+}
+
+export type CounterofferProposal = {
+  perNight: number;
+  nights: number;
+  estimate: number;
+  previousEstimate: number | null;
+  version: number;
+};
+
+/** Exact proposal the guest is agreeing to; null when any part is missing (never guessed). */
+export function counterofferProposal(
+  terms: InquiryTerms | null,
+  counterAmount: number | null,
+  responseVersion: number,
+): CounterofferProposal | null {
+  if (!terms?.check_in || !terms.check_out || counterAmount == null || !(counterAmount > 0)) return null;
+  const nights = Math.round((Date.parse(terms.check_out) - Date.parse(terms.check_in)) / 86400000);
+  if (!Number.isFinite(nights) || nights < 1) return null;
+  return {
+    perNight: counterAmount,
+    nights,
+    estimate: Math.round(counterAmount * nights * 100) / 100,
+    previousEstimate: terms.previous_estimate ?? null,
+    version: responseVersion,
+  };
 }

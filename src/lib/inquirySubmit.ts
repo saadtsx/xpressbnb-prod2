@@ -115,6 +115,7 @@ export async function submitBookingInquiry(
 
 export type InquiryTrackStatus =
   | 'accepted' | 'rejected' | 'review_declined' | 'countered' | 'legacy_unverified'
+  | 'counter_accepted' | 'counter_declined'
   | 'preparing'
   | 'sent_to_host'
   | 'viewed_by_host'
@@ -139,6 +140,7 @@ export type InquiryTrackResult = {
   hostDecisionNote: string | null;
   responseVersion: number;
   numGuests: number | null;
+  counterAmount: number | null;
 };
 
 export function inquiryTrackStatusLabel(status: InquiryTrackStatus): string {
@@ -182,6 +184,7 @@ export async function trackInquiryByReference(
       hostDecisionNote: typeof o.host_decision_note === 'string' ? o.host_decision_note : null,
       responseVersion: Number(o.response_version ?? 0),
       numGuests: typeof o.num_guests === 'number' ? o.num_guests : null,
+      counterAmount: typeof o.counter_amount === 'number' && o.counter_amount > 0 ? o.counter_amount : null,
     },
   };
 }
@@ -191,4 +194,33 @@ function parseHostContact(value: unknown): { name: string; phone: string } | nul
   const o = value as Record<string, unknown>;
   const phone = typeof o.phone === 'string' ? o.phone.replace(/\D/g, '').slice(-10) : '';
   return phone.length === 10 ? { name: safeHostDisplayName(typeof o.name === 'string' ? o.name : '', 'Host'), phone } : null;
+}
+
+export type CounterofferAction = 'accept_counter' | 'decline_counter';
+
+/** Guest decision on the exact proposal version shown; server re-checks version and ownership. */
+export async function respondToCounteroffer(input: {
+  customerReference: string;
+  guestEmail: string;
+  action: CounterofferAction;
+  expectedVersion: number;
+  requestId: string;
+}): Promise<{ ok: true } | { ok: false; stale: boolean; error: string }> {
+  const { error } = await supabase.rpc('respond_to_counteroffer', {
+    p_customer_reference: input.customerReference.trim().toUpperCase(),
+    p_guest_email: input.guestEmail.trim(),
+    p_action: input.action,
+    p_expected_version: input.expectedVersion,
+    p_request_id: input.requestId,
+  });
+  if (!error) return { ok: true };
+  const msg = error.message ?? '';
+  const stale = /proposal changed|no open counteroffer/i.test(msg);
+  return {
+    ok: false,
+    stale,
+    error: stale
+      ? 'The host changed this proposal or it is no longer open. Showing the latest status.'
+      : 'Could not record your decision. Check your connection and try again.',
+  };
 }

@@ -5,6 +5,7 @@ import SEOHead from '../components/SEOHead';
 import CustomerReferenceField from '../components/inquiry/CustomerReferenceField';
 import InquiryStatusTimeline from '../components/inquiry/InquiryStatusTimeline';
 import InquiryTermsSummary from '../components/inquiry/InquiryTermsSummary';
+import CounterofferDecision from '../components/inquiry/CounterofferDecision';
 import { inquiryTrackStatusLabel, trackInquiryByReference, type InquiryTrackResult } from '../lib/inquirySubmit';
 import { notificationStatusLabel } from '../lib/inquiryJourney';
 import { updateGuestInquiryFromTrack } from '../lib/guestTrustStorage';
@@ -100,6 +101,16 @@ export default function TrackInquiryPage() {
             {result.hostDecisionNote && <p className="text-sm"><strong>Host response:</strong> {result.hostDecisionNote}</p>}
             <p className="text-sm text-xpx-muted">{notificationStatusLabel(result.notificationStatus)}</p>
           </section>
+          {result.displayStatus === 'countered' && lookup && (
+            <CounterofferDecision
+              customerReference={result.customerReference}
+              guestEmail={lookup.email}
+              terms={result.terms}
+              counterAmount={result.counterAmount}
+              responseVersion={result.responseVersion}
+              onSettled={() => setRefresh(n => n + 1)}
+            />
+          )}
           <p className="text-sm">Requested stay: {result.checkInDate} to {result.checkOutDate ?? 'pending'}{result.numGuests != null ? ` · ${result.numGuests} guests` : ''}</p>
           <InquiryTermsSummary terms={result.terms} />
           {result.hostContact && <InquiryHostContactCard hostName={result.hostContact.name} hostPhoneDigits={result.hostContact.phone} propertyTitle={result.terms?.property_title ?? 'Requested property'} />}

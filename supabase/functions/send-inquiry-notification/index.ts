@@ -4,6 +4,8 @@ import {
   formatDateRange,
   guestInquiryAcceptedMessage,
   guestInquiryRejectedMessage,
+  hostCounterAcceptedMessage,
+  hostCounterDeclinedMessage,
   guestInquirySentMessage,
   hostNewInquiryMessage,
   normalizeIndiaE164,
@@ -309,6 +311,12 @@ async function processQueueItem(queue: QueueRow): Promise<{ messages: number; ok
     case 'inquiry_host_countered':
       tasks.push({ role: 'guest', phone: booking.guest_phone, eventSuffix: 'guest_countered',
         body: `The host proposed a different price for your inquiry. Review the latest proposal at https://www.xpressbnb.com/track-inquiry with your reference and email. This is not a confirmed booking.` });
+      break;
+    case 'inquiry_guest_accepted_counter':
+      tasks.push({ role: 'host', phone: hostPhone, eventSuffix: 'host_counter_accepted', body: hostCounterAcceptedMessage(ctx) });
+      break;
+    case 'inquiry_guest_declined_counter':
+      tasks.push({ role: 'host', phone: hostPhone, eventSuffix: 'host_counter_declined', body: hostCounterDeclinedMessage(ctx) });
       break;
     case 'inquiry_host_rejected':
       tasks.push({

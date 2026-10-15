@@ -18,6 +18,7 @@ function mapTrackStatusToSteps(displayStatus: InquiryTrackStatus): TimelineStep[
   const responseLabels: Partial<Record<InquiryTrackStatus, string>> = {
     review_declined: 'Closed during operations review',
     accepted: 'Host accepted — final agreement pending', rejected: 'Host declined', countered: 'Counteroffer — guest agreement pending',
+    counter_accepted: 'You accepted the counteroffer — final agreement pending', counter_declined: 'You declined the counteroffer',
     cancelled: 'Inquiry cancelled', legacy_unverified: 'Legacy status needs verification', host_responded: 'Host responded', completed: 'Completion needs verification',
   };
   if (displayStatus === 'review_declined') return [{ id: 'received', label: 'Inquiry received', state: 'done' }, { id: 'closed', label: 'Closed during operations review', state: 'active' }];

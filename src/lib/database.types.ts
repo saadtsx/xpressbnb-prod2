@@ -1540,6 +1540,16 @@ export type Database = {
         Args: { p_property_id: string }
         Returns: { brand_name: string; brand_description: string | null }[]
       }
+      respond_to_counteroffer: {
+        Args: {
+          p_customer_reference: string
+          p_guest_email: string
+          p_action: string
+          p_expected_version: number
+          p_request_id: string
+        }
+        Returns: Json
+      }
       report_property: {
         Args: {
           p_property_id: string

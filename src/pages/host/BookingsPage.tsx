@@ -309,6 +309,7 @@ export default function BookingsPage({ onNavigate }: BookingsPageProps = {}) {
     if (status === 'pending_host') return 'Awaiting you';
     if (status === 'inquiry_preparing') return 'Preparing';
     if (status === 'accepted') return 'Accepted — not confirmed';
+    if (status === 'cancelled') return 'Closed';
     if (status === 'rejected') return 'Rejected';
     return status.replace(/_/g, ' ');
   };
@@ -728,7 +729,9 @@ function InquiryCard({
           )}
 
           <div className="mt-4"><InquiryTermsSummary terms={parseInquiryTerms(booking.inquiry_terms)} /></div>
-          {booking.counter_amount != null && <p className="mt-2 text-sm font-semibold">Current counteroffer: ₹{booking.counter_amount.toLocaleString('en-IN')}/night · proposal {booking.response_version}</p>}
+          {booking.response_kind === 'guest_accepted_counter' && <p className="mt-2 text-sm font-semibold text-emerald-800">Guest accepted your counteroffer. Not a confirmed booking — agree the full terms and payment with the guest.</p>}
+          {booking.response_kind === 'guest_declined_counter' && <p className="mt-2 text-sm font-semibold text-xpx-muted">Guest declined your counteroffer. This inquiry is closed.</p>}
+          {booking.counter_amount != null && booking.response_kind === 'countered' && <p className="mt-2 text-sm font-semibold">Current counteroffer: ₹{booking.counter_amount.toLocaleString('en-IN')}/night · proposal {booking.response_version}</p>}
           {!isOffer && (
             <div className="mt-3 flex items-center gap-2 text-lg font-bold text-xpx-text">
               <IndianRupee className="w-5 h-5" />
