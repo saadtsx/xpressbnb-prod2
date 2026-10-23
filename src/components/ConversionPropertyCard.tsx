@@ -17,6 +17,7 @@ import { openStayScoreInfo } from '../lib/stayScoreEducation';
 import SaveListingButton from './SaveListingButton';
 import PropertyCardHostRow from './PropertyCardHostRow';
 import PropertyCardGallery from './PropertyCardGallery';
+import PropertyCardPriceCompare from './pricing/PropertyCardPriceCompare';
 import './glass/cardGlass.css';
 import { snapshotFromProperty } from '../lib/savedListingsStorage';
 import { listPropertyImages } from '../lib/propertyImages';
@@ -235,6 +236,11 @@ export default memo(function ConversionPropertyCard({
           <LocationPinIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
           <span className="xpx-property-card-zone-location__text">{locationLabel}</span>
         </div>
+
+        <PropertyCardPriceCompare
+          propertyId={property.id}
+          ourNightly={property.price_per_day || property.price_full_day || 0}
+        />
 
         <div className="xpx-property-card-zone-host">
           <PropertyCardHostRow hostId={property.host_id} propertyVerified={property.is_verified} />

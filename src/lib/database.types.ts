@@ -375,6 +375,36 @@ export type Database = {
         }
         Relationships: []
       }
+      property_external_listings: {
+        Row: {
+          id: string
+          property_id: string
+          platform: string
+          url: string
+          nightly_price: number
+          includes_fees: boolean
+          status: string
+          review_note: string | null
+          submitted_by: string
+          submitted_at: string
+          reviewed_by: string | null
+          reviewed_at: string | null
+        }
+        Insert: {
+          id?: string
+          property_id: string
+          platform: string
+          url: string
+          nightly_price: number
+          includes_fees?: boolean
+          status?: string
+          submitted_by: string
+        }
+        Update: {
+          status?: string
+        }
+        Relationships: []
+      }
       property_reports: {
         Row: {
           created_at: string
@@ -1548,6 +1578,35 @@ export type Database = {
           p_expected_version: number
           p_request_id: string
         }
+        Returns: Json
+      }
+      get_property_price_comparisons: {
+        Args: { p_property_ids: string[] }
+        Returns: {
+          property_id: string
+          platform: string
+          url: string
+          nightly_price: number
+          includes_fees: boolean
+          checked_at: string
+        }[]
+      }
+      submit_external_listing: {
+        Args: {
+          p_property_id: string
+          p_platform: string
+          p_url: string
+          p_nightly_price: number
+          p_includes_fees: boolean
+        }
+        Returns: Json
+      }
+      remove_external_listing: {
+        Args: { p_id: string }
+        Returns: undefined
+      }
+      review_external_listing: {
+        Args: { p_id: string; p_decision: string; p_note?: string | null }
         Returns: Json
       }
       report_property: {

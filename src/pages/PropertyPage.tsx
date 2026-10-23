@@ -27,6 +27,7 @@ import DeferredMount from '../components/property/DeferredMount';
 import { logSupabaseError, supabase } from '../lib/supabase';
 import { getPublicPropertyById } from '../lib/publicListings';
 import { getPublicPropertyBrand, type PublicPropertyBrand } from '../lib/publicPropertyBrand';
+import PropertyPriceComparisonPanel from '../components/pricing/PropertyPriceComparisonPanel';
 import { getAmenityIcon, getAmenityCategoryName, listPropertyAmenities } from '../lib/amenities';
 import { listPropertyImages } from '../lib/propertyImages';
 import { generatePropertyStructuredData, generateBreadcrumbStructuredData } from '../lib/seo';
@@ -1014,6 +1015,8 @@ export default function PropertyPage() {
                 )}
               </section>
             )}
+
+            <PropertyPriceComparisonPanel propertyId={property.id} ourNightly={basePrice} />
 
             <section>
               <h2 className="xpx-property-section-h2 mb-5">Meet your host</h2>

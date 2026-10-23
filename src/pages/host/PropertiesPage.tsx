@@ -5,6 +5,7 @@ import { Building2, Plus, CreditCard as Edit, Trash2, Eye, EyeOff, MapPin, Check
 import PropertyListingForm from '../../components/PropertyListingForm';
 import { hasPremiumAccess, getPremiumBadgeText } from '../../lib/premium';
 import ABTesting from '../../components/premium/ABTesting';
+import ExternalListingsManager from '../../components/host/ExternalListingsManager';
 import type { Property } from '../../lib/database.types';
 import { hasValidHostPhone } from '../../lib/host';
 import { listPropertyImages } from '../../lib/propertyImages';
@@ -329,6 +330,8 @@ export default function PropertiesPage() {
                     Delete
                   </button>
                 </div>
+
+                <ExternalListingsManager propertyId={property.id} />
 
                 <div className="mt-4 pt-4 xpx-divider">
                   <button

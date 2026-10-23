@@ -22,6 +22,7 @@ import {
   type OpsSnapshot,
 } from '../../lib/opsConsole';
 import OpsLiveReports from './OpsLiveReports';
+import OpsPriceComparisonReview from './OpsPriceComparisonReview';
 
 type OpsConsolePageProps = {
   onNavigate: (path: string) => void;
@@ -348,6 +349,10 @@ export default function OpsConsolePage({ onNavigate }: OpsConsolePageProps) {
                 </div>
               </section>
             ) : null}
+
+            <OpsPriceComparisonReview
+              titleById={Object.fromEntries((snapshot?.properties ?? []).map((p) => [p.id, p.title]))}
+            />
 
             <OpsLiveReports
               titleById={Object.fromEntries((snapshot?.properties ?? []).map((p) => [p.id, p.title]))}
